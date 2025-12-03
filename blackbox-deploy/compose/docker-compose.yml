@@ -1,0 +1,12 @@
+services:
+  tower: # The Go API
+    image: blackbox-tower
+    ports:
+      - "8080:8080"  # Expose API port
+    environment:
+      - ALLOWED_ORIGINS=* # Crucial for CORS (see below)
+
+  hud: # The React Dashboard
+    image: blackbox-hud
+    ports:
+      - "80:80"      # Expose Web Interface
