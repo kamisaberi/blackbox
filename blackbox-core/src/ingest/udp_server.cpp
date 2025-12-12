@@ -1,9 +1,13 @@
 /**
  * @file udp_server.cpp
- * @brief Implementation of the High-Performance UDP Listener.
+ * @brief Implementation of the Ingestion Layer.
  */
 
 #include "blackbox/ingest/udp_server.h"
+#include "blackbox/common/settings.h"
+#include "blackbox/common/logger.h"
+#include "blackbox/common/metrics.h"
+#include "blackbox/ingest/rate_limiter.h"
 #include <iostream>
 
 namespace blackbox::ingest {
@@ -12,25 +16,23 @@ namespace blackbox::ingest {
     // Constructor
     // =========================================================
     UdpServer::UdpServer(boost::asio::io_context& io_context, 
-                         short port, 
                          RingBuffer<65536>& buffer)
-        : socket_(io_context, udp::endpoint(udp::v4(), port)),
-          ring_buffer_(buffer),
-          dropped_packets_count_(0)
+        : socket_(io_context, 
+                  udp::endpoint(udp::v4(), 
+                  common::Settings::instance().network().udp_port)), // Load Port from Settings
+          ring_buffer_(buffer)
     {
-        std::cout << "[CORE] UDP Server listening on port " << port << std::endl;
+        LOG_INFO("UDP Server listening on port: " + 
+                 std::to_string(common::Settings::instance().network().udp_port));
         
         // Start the infinite loop
         start_receive();
     }
 
     // =========================================================
-    // start_receive
+    // Start Receive
     // =========================================================
     void UdpServer::start_receive() {
-        // Boost.Asio async pattern:
-        // 1. Give it a buffer to write into (recv_buffer_)
-        // 2. Give it a function to call when done (handle_receive)
         socket_.async_receive_from(
             boost::asio::buffer(recv_buffer_), 
             remote_endpoint_,
@@ -41,40 +43,47 @@ namespace blackbox::ingest {
     }
 
     // =========================================================
-    // handle_receive (The Hot Path)
+    // Handle Receive (The Hot Path)
     // =========================================================
     void UdpServer::handle_receive(const boost::system::error_code& error,
                                    std::size_t bytes_transferred) {
         
         if (!error && bytes_transferred > 0) {
             
-            // -----------------------------------------------------
-            // CRITICAL SECTION: Push to Lock-Free Buffer
-            // -----------------------------------------------------
-            // Note: We access recv_buffer_.data() directly.
-            // We do NOT create a std::string here (allocation is too slow).
-            
+            // 1. METRICS: Count raw packet
+            common::Metrics::instance().inc_packets_received(1);
+
+            // 2. SECURITY: Rate Limit Check
+            // We must convert address to string (allocating memory), 
+            // but RateLimiter requires the IP key.
+            // Optimization Note: In v2.0, use a raw uint32_t IP for RateLimiter to avoid string alloc.
+            std::string source_ip = remote_endpoint_.address().to_string();
+
+            if (!RateLimiter::instance().should_allow(source_ip)) {
+                // DoS Detected -> Drop Packet
+                common::Metrics::instance().inc_packets_dropped(1);
+                
+                // Jump to restart loop immediately
+                start_receive();
+                return; 
+            }
+
+            // 3. STORAGE: Push to Lock-Free Buffer
+            // We pass the raw pointer and length. formatting happens in the Parser thread.
             bool success = ring_buffer_.push(recv_buffer_.data(), bytes_transferred);
 
             if (!success) {
-                // Buffer is full (Consumer is too slow).
-                // We drop the packet to keep the Ingest Thread alive.
-                dropped_packets_count_++;
+                // Buffer Full -> Drop Packet
+                common::Metrics::instance().inc_packets_dropped(1);
                 
-                // Optional: Log every 1000 drops to avoid spamming console
-                if (dropped_packets_count_ % 1000 == 0) {
-                    std::cerr << "[WARN] RingBuffer Full! Dropped " 
-                              << dropped_packets_count_ << " packets." << std::endl;
-                }
+                // Optional: Warn if this happens too often (handled by Metrics Reporter)
             }
-            // -----------------------------------------------------
-        } else {
-            if (error != boost::asio::error::operation_aborted) {
-                std::cerr << "[ERR] UDP Receive Error: " << error.message() << std::endl;
-            }
+
+        } else if (error != boost::asio::error::operation_aborted) {
+            LOG_ERROR("UDP Receive Error: " + error.message());
         }
 
-        // Loop: Re-arm the listener for the next packet immediately
+        // 4. LOOP: Re-arm listener
         start_receive();
     }
 
