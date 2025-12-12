@@ -1,25 +1,39 @@
 /**
  * @file parser_engine.cpp
- * @brief Implementation of Zero-Copy Parsing.
+ * @brief Implementation of the High-Performance Log Parser.
  */
 
 #include "blackbox/parser/parser_engine.h"
-#include <functional> // for std::hash
-#include <cstring>    // for strchr
+#include "blackbox/common/id_generator.h"
+#include "blackbox/common/string_utils.h"
+#include "blackbox/common/settings.h"
+#include "blackbox/common/logger.h"
+#include <cstring>
 
 namespace blackbox::parser {
 
     // =========================================================
     // Constructor
     // =========================================================
-ParserEngine::ParserEngine() {
-    tokenizer_.load_vocabulary("config/vocab.txt");
-    scaler_.load_parameters("config/scaler_params.txt"); // Load params
-}
+    ParserEngine::ParserEngine() {
+        const auto& settings = common::Settings::instance();
+
+        LOG_INFO("Initializing Parser Engine...");
+
+        // Load Vocabulary for Tokenizer
+        if (!tokenizer_.load_vocabulary(settings.ai().vocab_path)) {
+            LOG_ERROR("Failed to load vocabulary. AI accuracy will be degraded.");
+        }
+
+        // Load Scaler Parameters
+        if (!scaler_.load_parameters(settings.ai().scaler_path)) {
+            LOG_ERROR("Failed to load scaler params. AI inputs will not be normalized.");
+        }
+    }
+
     // =========================================================
-    // Helper: Extract Field (Move cursor forward)
+    // Helper: Extract Field (Move cursor)
     // =========================================================
-    // Reads word until space, returns view, advances cursor
     std::string_view ParserEngine::extract_field(std::string_view& cursor) {
         if (cursor.empty()) return {};
 
@@ -27,18 +41,13 @@ ParserEngine::ParserEngine() {
         size_t space_pos = cursor.find(' ');
 
         if (space_pos == std::string_view::npos) {
-            // End of string
             std::string_view field = cursor;
-            cursor = {}; // Empty the cursor
+            cursor = {};
             return field;
         }
 
-        // Return the slice
         std::string_view field = cursor.substr(0, space_pos);
-        
-        // Advance cursor past the space
         cursor.remove_prefix(space_pos + 1);
-        
         return field;
     }
 
@@ -47,81 +56,63 @@ ParserEngine::ParserEngine() {
     // =========================================================
     ParsedLog ParserEngine::process(const ingest::LogEvent& raw_event) {
         ParsedLog output;
+
+        // 1. Assign Metadata
+        output.id = common::IdGenerator::generate_uuid_v4();
         output.timestamp = raw_event.timestamp_ns;
 
-        // 1. Create a view over the raw C-array
-        // This costs practically nothing (pointer + size)
+        // 2. Create View over raw buffer
         std::string_view cursor(raw_event.raw_data, raw_event.length);
 
-        // 2. Parse RFC5424 Syslog (Simplified Logic for MVP)
-        // Format: <PRI>VERSION TIMESTAMP HOST APP-NAME PROCID MSGID STRUCTURED-DATA MSG
-        // Example: <34>1 2023-10-10T... mymachine sshd ... ... ... Failed password
-        
-        // Skip PRI <34>1
-        size_t angle_bracket = cursor.find('>');
-        if (angle_bracket != std::string_view::npos) {
-            cursor.remove_prefix(angle_bracket + 1); // Skip >
-            // Skip Version
-            extract_field(cursor); 
-        }
+        // 3. RFC5424 Syslog Parsing Logic (Optimized)
+        // Expected: <PRI>VER TS HOST APP PID MSGID SD MSG
+        // Fast-path check for Syslog header
+        if (!cursor.empty() && cursor[0] == '<') {
+            size_t angle_end = cursor.find('>');
+            if (angle_end != std::string_view::npos) {
+                cursor.remove_prefix(angle_end + 1); // Skip <PRI>
 
-        // Extract Timestamp (Skip for now, we use ingestion time)
-        extract_field(cursor);
-
-        // Extract Host
-        output.host = extract_field(cursor);
-
-        // Extract Service (App-Name)
-        output.service = extract_field(cursor);
-
-        // Skip PROCID and MSGID
-        extract_field(cursor); 
-        extract_field(cursor);
-
-        // The rest is the Message
-        output.message = cursor;
-
-        // 3. Vectorize (Prepare for AI)
-        vectorize_text(output.message, output.embedding_vector);
-
-        // TODO AFTER NW CODE
-        // tokenizer_.encode(output.message, output.embedding_vector);
-        // // 2. Scale (Normalize to 0.0 - 1.0)
-        // scaler_.transform(output.embedding_vector);
-
-
-        return output;
-    }
-
-    // =========================================================
-    // Vectorize (The Hashing Trick)
-    // =========================================================
-    void ParserEngine::vectorize_text(std::string_view text, std::array<float, 128>& out_vector) {
-        // Clear vector
-        out_vector.fill(0.0f);
-
-        // Simple Feature Hashing (MurmurHash style logic simplified)
-        // We hash chunks of the string and map them to indices 0..127
-        
-        std::hash<std::string_view> hasher;
-        
-        // A moving window over the text would be better, but for MVP:
-        // We just hash the whole string and seed a few positions
-        // In a real NLP model, we would loop over tokens.
-        
-        size_t h = hasher(text);
-        
-        // Spread the hash bits across the vector (Pseudo-embedding)
-        for (int i = 0; i < 128; ++i) {
-            if ((h >> i) & 1) {
-                out_vector[i] = 1.0f;
-            } else {
-                out_vector[i] = 0.0f;
+                // Skip Version if present (digit check)
+                if (!cursor.empty() && std::isdigit(cursor[0])) {
+                     extract_field(cursor);
+                }
             }
         }
-        
-        // NOTE: In Phase 2, this function is replaced by a "vocab.json" lookup
-        // that matches exactly what `blackbox-sim` does in Python.
+
+        // Timestamp (Skip - we use ingestion time for consistency)
+        extract_field(cursor);
+
+        // Hostname
+        output.host = extract_field(cursor);
+
+        // Service / App Name
+        output.service = extract_field(cursor);
+        // Remove trailing colon if present (e.g., "sshd:")
+        if (!output.service.empty() && output.service.back() == ':') {
+            output.service.remove_suffix(1);
+        }
+
+        // Skip PID, MSGID, Structured Data (Simplification for MVP)
+        // In a real implementation, we would check for '[' and ']' chars.
+
+        // Remaining string is the Message
+        // Trim whitespace using StringUtils
+        output.message = common::StringUtils::trim(cursor);
+
+        // Fallback: If parsing failed (empty fields), treat whole raw data as message
+        if (output.message.empty()) {
+            output.message = std::string_view(raw_event.raw_data, raw_event.length);
+            output.host = "unknown";
+            output.service = "raw";
+        }
+
+        // 4. Vectorize (Text -> Integers)
+        tokenizer_.encode(output.message, output.embedding_vector);
+
+        // 5. Scale (Integers -> Normalized Floats)
+        scaler_.transform(output.embedding_vector);
+
+        return output;
     }
 
 } // namespace blackbox::parser
