@@ -53,6 +53,8 @@ namespace blackbox::parser {
 
         // Helper to find the next space in a raw buffer
         std::string_view extract_field(std::string_view& cursor);
+        Tokenizer tokenizer_;
+        FeatureScaler scaler_; // Add member
     };
 
 } // namespace blackbox::parser
