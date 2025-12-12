@@ -1,10 +1,11 @@
 /**
  * @file udp_server.h
- * @brief Asynchronous UDP Listener using Boost.Asio.
+ * @brief High-Performance Asynchronous UDP Listener.
  * 
- * This class runs on the Main Ingestion Thread.
- * It performs ZERO allocations per packet.
- * It writes directly into the RingBuffer.
+ * Capabilities:
+ * - Zero-Allocation Receive Loop
+ * - Integrated DDoS Protection (Rate Limiting)
+ * - Atomic Metrics Tracking
  */
 
 #ifndef BLACKBOX_INGEST_UDP_SERVER_H
@@ -13,7 +14,7 @@
 #include <boost/asio.hpp>
 #include <array>
 #include <memory>
-#include "blackbox/ingest/ring_buffer.h" // Assuming RingBuffer definition is here
+#include "blackbox/ingest/ring_buffer.h"
 
 namespace blackbox::ingest {
 
@@ -22,50 +23,43 @@ namespace blackbox::ingest {
     class UdpServer {
     public:
         /**
-         * @brief Construct a new Udp Server
+         * @brief Construct a new Udp Server.
          * 
-         * @param io_context The Boost.Asio IO context (event loop)
-         * @param port The UDP port to listen on (usually 514)
-         * @param buffer Reference to the RingBuffer to push data into
+         * @param io_context The Boost.Asio event loop.
+         * @param buffer Reference to the shared RingBuffer.
          */
         UdpServer(boost::asio::io_context& io_context, 
-                  short port, 
                   RingBuffer<65536>& buffer);
 
-        // Delete copy constructors to prevent accidental copying of sockets
+        // Disable copying
         UdpServer(const UdpServer&) = delete;
         UdpServer& operator=(const UdpServer&) = delete;
 
     private:
         /**
-         * @brief Initiates the async receive loop.
+         * @brief Initiates the async receive operation.
          */
         void start_receive();
 
         /**
-         * @brief Callback function when a packet arrives.
+         * @brief Callback when a packet arrives.
          * 
-         * @param error Error code (if any)
-         * @param bytes_transferred Number of bytes received
+         * 1. Checks Rate Limit.
+         * 2. Updates Metrics.
+         * 3. Pushes to RingBuffer.
          */
         void handle_receive(const boost::system::error_code& error,
                             std::size_t bytes_transferred);
 
-        // MEMBER VARIABLES
+        // Network Resources
         udp::socket socket_;
         udp::endpoint remote_endpoint_;
         
-        // The destination queue (Reference, not copy)
+        // Destination Buffer (Reference)
         RingBuffer<65536>& ring_buffer_;
 
-        // Reusable scratchpad buffer for incoming data.
-        // 64KB is the theoretical max size of a UDP packet.
+        // Scratchpad memory (Max UDP packet size)
         std::array<char, 65507> recv_buffer_; 
-        
-        // Metrics
-        uint64_t dropped_packets_count_;
     };
 
-} // namespace blackbox::ingest
-
-#endif // BLACKBOX_INGEST_UDP_SERVER_H
+} // namespace blackbox::in
