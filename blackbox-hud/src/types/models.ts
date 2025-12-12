@@ -1,13 +1,32 @@
-// Define what a "Log" looks like exactly
-export interface LogEvent {
+/**
+ * Represents a log entry received from WebSocket or API.
+ * Must match the JSON structure from blackbox-tower.
+ */
+export interface LogEntry {
     id: string;
-    timestamp: string;
-    source_ip: string;
+    timestamp: string; // ISO 8601 string
+    host: string;
+    country: string;
     service: string;
     message: string;
     anomaly_score: number; // 0.0 to 1.0
-    is_threat: boolean;
+    is_threat: number;     // 0 or 1
 }
 
-// Define what the Red/Green/Blue status means
-export type ThreatLevel = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+/**
+ * Aggregated stats for the top bar.
+ */
+export interface DashboardStats {
+    total_logs: number;
+    threat_count: number;
+    eps: number;
+}
+
+/**
+ * Authentication response.
+ */
+export interface UserSession {
+    token: string;
+    username: string;
+    expiresAt: number;
+}
