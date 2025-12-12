@@ -14,6 +14,7 @@
 // Ingestion
 #include "blackbox/ingest/ring_buffer.h"
 #include "blackbox/ingest/udp_server.h"
+#include "blackbox/ingest/tcp_server.h"
 
 // Logic & Analysis
 #include "blackbox/parser/parser_engine.h"
@@ -57,6 +58,8 @@ namespace blackbox::core {
         // 2. Network Inputs
         std::shared_ptr<boost::asio::io_context> io_context_;
         std::unique_ptr<ingest::UdpServer> udp_server_;
+        std::unique_ptr<ingest::TcpServer> tcp_server_;
+
         std::unique_ptr<AdminServer> admin_server_;
 
         // 3. The Brains
