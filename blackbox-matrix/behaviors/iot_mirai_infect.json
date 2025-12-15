@@ -1,0 +1,10 @@
+{
+  "name": "Mirai Attack Pattern",
+  "eps": 20,
+  "patterns": [
+    { "weight": 0.2, "log": "sshd: Failed password for {random_user} from {target_ip} port {random_port}" },
+    { "weight": 0.7, "log": "kernel: OUTBOUND CONNECTION SYN_SENT to {target_ip}:80" },
+    { "weight": 0.1, "log": "app: downloading payload from c2.evil-site.com/bin/arm7" }
+  ],
+  "targets": ["192.168.1.100", "10.0.0.1"]
+}
