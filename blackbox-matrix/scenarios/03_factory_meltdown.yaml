@@ -1,0 +1,25 @@
+name: "Scenario: SCADA/ICS Sabotage"
+description: "100 PLCs running normally. One HMI goes rogue and sends kill commands."
+duration_seconds: 600
+core_ip: "172.17.0.1"
+
+nodes:
+  # The Assembly Line (Normal Sensors)
+  - name: "robotic-arm-plc"
+    image: "iot-arm32"
+    count: 80
+    behavior: "ics_plc_normal"
+
+  # The Safety System (Monitoring)
+  - name: "safety-controller"
+    image: "jetson-arm64"
+    count: 5
+    behavior: "ics_safety_monitor"
+
+  # The Compromised HMI (Human Machine Interface)
+  # Starts acting weird after 45 seconds
+  - name: "hmi-station-04"
+    image: "server-linux" 
+    count: 1
+    behavior: "ics_hmi_compromised"
+    start_delay: 45
