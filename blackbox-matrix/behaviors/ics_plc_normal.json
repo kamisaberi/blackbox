@@ -1,0 +1,8 @@
+{
+  "name": "PLC Normal Operation",
+  "eps": 5,
+  "patterns": [
+    { "weight": 0.9, "log": "MODBUS_TCP: UNIT_ID={random_port} FUNC_CODE=03 REG=40001 VAL=Normal status=OK" },
+    { "weight": 0.1, "log": "SENSOR_READ: temp_c=45.2 vibration=0.02mm/s load=60%" }
+  ]
+}
