@@ -1,0 +1,9 @@
+{
+  "name": "Data Exfiltration",
+  "eps": 2,
+  "patterns": [
+    { "weight": 0.5, "log": "postgres[554]: LOG:  duration: 1540.2 ms  statement: SELECT * FROM credit_cards LIMIT 1000 OFFSET {random_port}" },
+    { "weight": 0.5, "log": "kernel: OUTBOUND CONNECTION: Src=192.168.1.50 Dst=103.20.15.1 (Unknown Geo) Proto=TCP Len=1500 Flags=PUSH,ACK" }
+  ],
+  "targets": ["103.20.15.1"]
+}
