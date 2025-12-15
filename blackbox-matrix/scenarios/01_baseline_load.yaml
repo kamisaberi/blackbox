@@ -1,0 +1,23 @@
+name: "Scenario: Baseline Operations"
+description: "Simulates a standard, healthy network with mixed IoT and Server traffic. No attacks."
+duration_seconds: 300
+core_ip: "172.17.0.1"
+
+nodes:
+  # 20 Web Servers handling user traffic
+  - name: "web-prod"
+    image: "server-linux"
+    count: 20
+    behavior: "server_web_normal"
+
+  # 50 IoT Sensors reporting environment data
+  - name: "env-sensor"
+    image: "iot-arm32"
+    count: 50
+    behavior: "iot_normal"
+
+  # 5 Edge AI Gateways processing video locally
+  - name: "jetson-edge"
+    image: "jetson-arm64"
+    count: 5
+    behavior: "edge_ai_normal"
