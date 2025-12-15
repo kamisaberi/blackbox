@@ -172,3 +172,68 @@ Here are **7 features**—ranging from deep-tech detection logic to tiny UI conv
 **Which one makes you a "Serious Security Company"?**
 
 **#2 (Immutable Hashing)** and **#4 (JA3 Fingerprinting)**. These show you understand deep security architecture.
+
+---
+
+
+To elevate Blackbox into a Tier-1 security platform, you need features that go beyond **Detection** and move into **Investigation**, **Forensics**, and **Adaptation**.
+
+Here are **5 Advanced Features** that will distinguish Blackbox from generic open-source tools.
+
+---
+
+### **1. "Snapshot" (Triggered Packet Capture)**
+**Category:** Deep Forensics
+*   **The Problem:** A log says "Malicious traffic detected." But *what* was inside the packet? Was it a SQL injection payload or just a broken script? You usually can't tell because you didn't record the full network packet (PCAP) because it takes too much storage.
+*   **The Feature:** A circular buffer of raw packets (last 30 seconds) kept in RAM by the **Sentry Agent**.
+*   **The Magic:** When the Core detects a threat (Score > 0.9), it sends a signal back to the Agent: **"Dump the buffer!"**
+*   **Result:** The analyst gets the specific PCAP file associated with the alert, showing the exact payload *before* and *after* the attack triggered.
+*   **Tech Stack:** `libpcap` (C++) inside `blackbox-sentry`.
+
+### **2. "Device Fingerprinting" (Passive Asset Discovery)**
+**Category:** IoT / Asset Management
+*   **The Problem:** In an IoT network, you don't know what devices are connected. Is IP `192.168.1.50` a Printer, a Server, or a unauthorized Raspberry Pi?
+*   **The Feature:** Passive analysis of MAC addresses (OUI lookup), DHCP Options, and User-Agent strings to guess the device type.
+*   **Implementation:**
+    *   **MAC OUI:** Lookup the first 3 bytes (e.g., `B8:27:EB` = Raspberry Pi).
+    *   **DHCP:** Analyze the "Requested Options" list (Windows requests different options than Linux).
+    *   **TTL:** Different OSs use different default Time-To-Live values (Linux=64, Windows=128).
+*   **Result:** The Dashboard shows icons next to IPs: 🖨️ Printer, 💻 Laptop, 📱 Phone.
+
+### **3. "Neural Feedback Loop" (RLHF for SIEM)**
+**Category:** AI Improvement
+*   **The Problem:** AI models drift. What was "normal" last month might be an "anomaly" today (e.g., Black Friday traffic spikes).
+*   **The Feature:** A "False Positive" button on the Dashboard.
+*   **The Workflow:**
+    1.  Analyst clicks "This is Normal" on a Red Alert.
+    2.  The system tags that log vector as "Benign".
+    3.  `blackbox-sim` automatically includes this vector in the next re-training batch.
+    4.  The model updates to ignore this pattern in the future.
+*   **Tech Stack:** A feedback table in ClickHouse -> Python Retraining Script.
+
+### **4. "Lateral Movement Graph" (The Kill Chain)**
+**Category:** Advanced Visualization
+*   **The Problem:** Attacks rarely happen on one machine. A hacker enters via a Thermostat -> Jumps to a Laptop -> Jumps to the Database. A linear list of logs hides this story.
+*   **The Feature:** A Graph Database approach (Graph-based correlation).
+*   **Logic:**
+    *   Track `SrcIP -> DstIP` connections.
+    *   Track `User -> Machine` logins.
+    *   If `User A` logs into `Machine 1`, and then `Machine 1` connects to `Machine 2` using `User B` credentials within 5 minutes, draw a **Red Line** connecting them.
+*   **Tech Stack:** Cytoscape.js (Frontend) + Graph logic in Go.
+
+### **5. "Remote Forensics" (Live Terminal)**
+**Category:** Incident Response
+*   **The Problem:** You see an alert on a server. You need to check running processes (`ps aux`) or open ports (`netstat`). You have to find SSH keys, VPN in, and log in manually. It takes too long.
+*   **The Feature:** The **Sentry Agent** exposes a secure, read-only "Command Runner" via the Dashboard.
+*   **Capabilities:**
+    *   Button: "Get Process List" -> Agent runs `ps aux` -> Returns JSON to Dashboard.
+    *   Button: "Get Open Connections" -> Agent runs `ss -tulpn`.
+    *   Button: "Isolate Host" -> Agent runs `iptables -P INPUT DROP`.
+*   **Security:** Commands are cryptographically signed by the Server. The Agent only executes pre-defined, safe commands (no arbitrary shell execution).
+
+---
+
+### **Which one to build first?**
+
+1.  **Device Fingerprinting:** Essential for the IoT market. It creates a "wow" factor during demos ("Look, it automatically identified my iPhone!").
+2.  **Snapshot (PCAP):** Critical for high-end Enterprise/Defense clients who need evidence for legal reasons.
