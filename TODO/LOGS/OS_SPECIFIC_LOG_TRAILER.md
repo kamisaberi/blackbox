@@ -182,3 +182,282 @@ ParsedLog ParserEngine::process(const ingest::LogEvent& raw_event) {
 3.  **Blackbox Sentry (Windows):** Runs as a Service. Hooks into the `wevtapi.dll` API.
 
 To make your project a "Real SIEM," you must compile the Agent (`blackbox-sentry`) separately for Linux and Windows and install it on the target machines.
+
+
+
+
+---
+
+
+
+
+This guide provides the **step-by-step, copy-paste instructions** to build and install the **Blackbox Sentry** agent on production **Linux** servers (Debian/Ubuntu/RHEL) and **Windows** workstations.
+
+We will create a **single C++ codebase** that detects the operating system at compile time and builds the correct collector (Syslog for Linux, Event Viewer for Windows).
+
+---
+
+### **Part 1: The Agent Source Code**
+
+Before building, ensure your `blackbox-sentry` directory has this specific cross-platform structure.
+
+**Directory:** `blackbox/blackbox-sentry/`
+
+#### **1. `CMakeLists.txt` (Cross-Platform Build System)**
+This script automatically detects if you are on Linux or Windows and links the correct libraries.
+
+```cmake
+cmake_minimum_required(VERSION 3.15)
+project(blackbox-sentry VERSION 1.0.0 LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Dependencies
+find_package(Boost REQUIRED COMPONENTS system thread asio)
+
+# Source Files
+set(SOURCES 
+    src/main.cpp
+    src/transport/tcp_client.cpp
+)
+
+# OS Specific Configuration
+if(WIN32)
+    message(STATUS "Building for Windows")
+    list(APPEND SOURCES src/collectors/windows/event_log_reader.cpp)
+    # Link Windows Event Log API
+    link_libraries(wevtapi) 
+    add_definitions(-D_WIN32_WINNT=0x0601) # Target Windows 7 or later
+else()
+    message(STATUS "Building for Linux")
+    list(APPEND SOURCES src/collectors/linux/syslog_tailer.cpp)
+    # Link PThread for Linux
+    find_package(Threads REQUIRED)
+endif()
+
+add_executable(blackbox-sentry ${SOURCES})
+
+# Link Libraries
+if(WIN32)
+    target_link_libraries(blackbox-sentry PRIVATE Boost::system Boost::thread)
+else()
+    target_link_libraries(blackbox-sentry PRIVATE Boost::system Boost::thread Threads::Threads)
+endif()
+```
+
+#### **2. `src/main.cpp` (The Entry Point)**
+This file switches logic based on the OS.
+
+```cpp
+#include <iostream>
+#include <thread>
+#include <boost/asio.hpp>
+#include "transport/tcp_client.h"
+
+// Conditional Includes
+#ifdef _WIN32
+    #include "collectors/windows/event_log_reader.h"
+#else
+    #include "collectors/linux/syslog_tailer.h"
+#endif
+
+// Configuration (In prod, read this from a config.yaml)
+const std::string SERVER_IP = "192.168.1.100"; // CHANGE THIS TO YOUR CORE IP
+const uint16_t SERVER_PORT = 601;
+const std::string AGENT_ID = "SENTRY-NODE-01"; 
+
+int main() {
+    try {
+        boost::asio::io_context io_context;
+        
+        // 1. Initialize Network
+        blackbox::sentry::TcpClient client(io_context, SERVER_IP, SERVER_PORT, AGENT_ID);
+        client.connect();
+
+        // 2. Start Background IO Thread
+        std::thread io_thread([&io_context](){ io_context.run(); });
+
+        std::cout << "[SENTRY] Agent Started. Target: " << SERVER_IP << std::endl;
+
+        // 3. Start OS Specific Collector
+        #ifdef _WIN32
+            std::cout << "[SENTRY] Starting Windows Event Collector..." << std::endl;
+            StartWindowsCollector(client); // Blocking call inside internal loop
+        #else
+            std::cout << "[SENTRY] Starting Linux Syslog Tailer..." << std::endl;
+            // Tail auth.log (Debian/Ubuntu) or secure (RHEL/CentOS)
+            SyslogTailer tailer("/var/log/auth.log", client);
+            tailer.run(); // Blocking call
+        #endif
+
+        if(io_thread.joinable()) io_thread.join();
+
+    } catch (std::exception& e) {
+        std::cerr << "[FATAL] " << e.what() << std::endl;
+    }
+    return 0;
+}
+```
+
+---
+
+### **Part 2: Linux Build & Install (Ubuntu/Debian)**
+
+**Target:** Web Servers, Database Servers.
+
+#### **Step 1: Install Dependencies**
+You need the GNU Compiler Collection and Boost.
+```bash
+sudo apt-get update
+sudo apt-get install -y build-essential cmake libboost-all-dev git
+```
+
+#### **Step 2: Build the Binary**
+```bash
+cd blackbox/blackbox-sentry
+mkdir build && cd build
+cmake ..
+make -j$(nproc)
+```
+*Result:* You now have an executable named `blackbox-sentry`.
+
+#### **Step 3: Installation (Systemd)**
+To make it run automatically on boot and restart if it crashes, we create a **Systemd Service**.
+
+1.  **Move Binary:**
+    ```bash
+    sudo mv blackbox-sentry /usr/local/bin/
+    sudo chmod +x /usr/local/bin/blackbox-sentry
+    ```
+
+2.  **Create Service File:**
+    Create `/etc/systemd/system/blackbox-sentry.service`:
+    ```ini
+    [Unit]
+    Description=Blackbox Sentry Agent
+    After=network.target
+
+    [Service]
+    Type=simple
+    ExecStart=/usr/local/bin/blackbox-sentry
+    Restart=always
+    RestartSec=5
+    User=root
+    # Root is needed to read /var/log/auth.log. 
+    # In strict environments, create a 'sentry' user and use ACLs.
+
+    [Install]
+    WantedBy=multi-user.target
+    ```
+
+3.  **Enable & Start:**
+    ```bash
+    sudo systemctl daemon-reload
+    sudo systemctl enable blackbox-sentry
+    sudo systemctl start blackbox-sentry
+    ```
+
+4.  **Verify:**
+    ```bash
+    sudo systemctl status blackbox-sentry
+    ```
+
+---
+
+### **Part 3: Windows Build & Install**
+
+**Target:** Employee Laptops, Active Directory Controllers.
+**Prerequisite:** You need **Visual Studio 2022** (Community Edition is free) with "Desktop development with C++" installed.
+
+#### **Step 1: Install Dependencies (vcpkg)**
+Managing C++ libraries on Windows is hard. We use **vcpkg** (Microsoft's package manager).
+
+1.  Open **PowerShell (Admin)**.
+2.  Install vcpkg:
+    ```powershell
+    cd C:\
+    git clone https://github.com/microsoft/vcpkg.git
+    .\vcpkg\bootstrap-vcpkg.bat
+    ```
+3.  Install Boost (This takes 10-15 minutes, grab a coffee):
+    ```powershell
+    .\vcpkg\vcpkg install boost:x64-windows
+    ```
+4.  Integrate with Visual Studio/CMake:
+    ```powershell
+    .\vcpkg\vcpkg integrate install
+    ```
+
+#### **Step 2: Build the Binary**
+1.  Navigate to your source code folder in PowerShell.
+2.  Run CMake specifying the toolchain file provided by vcpkg:
+    ```powershell
+    cd blackbox\blackbox-sentry
+    mkdir build
+    cd build
+    
+    # Replace path to vcpkg.cmake with your actual path
+    cmake .. -DCMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake
+    
+    # Compile Release version
+    cmake --build . --config Release
+    ```
+*Result:* You will find `blackbox-sentry.exe` inside `build\Release\`.
+
+#### **Step 3: Installation (Windows Service)**
+Running an `.exe` manually is bad (it closes when you log off). We need to register it as a **Windows Service**.
+
+The easiest, most stable way to turn any `.exe` into a service is using **NSSM (Non-Sucking Service Manager)**. It's the industry standard for custom agents.
+
+1.  **Download NSSM:** [https://nssm.cc/download](https://nssm.cc/download)
+2.  **Prepare Folder:**
+    *   Create `C:\Program Files\Blackbox`
+    *   Copy `blackbox-sentry.exe` to that folder.
+3.  **Install Service:**
+    Open **Command Prompt as Administrator**:
+    ```cmd
+    nssm.exe install BlackboxSentry "C:\Program Files\Blackbox\blackbox-sentry.exe"
+    ```
+4.  **Configure Restart Policy (Optional):**
+    ```cmd
+    nssm.exe set BlackboxSentry AppExit Default Restart
+    ```
+5.  **Start Service:**
+    ```cmd
+    sc start BlackboxSentry
+    ```
+
+#### **Step 4: Verify**
+1.  Open **Services** (`services.msc`).
+2.  Look for **BlackboxSentry**. It should be "Running".
+3.  Check your Blackbox Dashboard. You should see logs arriving from the Windows machine.
+
+---
+
+### **Summary of Files Needed for Compilation**
+
+Ensure these files exist in `blackbox-sentry/src/collectors/` before building.
+
+**`src/collectors/linux/syslog_tailer.h`**
+```cpp
+#pragma once
+#include <string>
+#include "../../transport/tcp_client.h"
+class SyslogTailer {
+public:
+    SyslogTailer(const std::string& path, blackbox::sentry::TcpClient& client);
+    void run();
+};
+```
+
+**`src/collectors/windows/event_log_reader.h`**
+```cpp
+#pragma once
+#include "../../transport/tcp_client.h"
+#ifdef _WIN32
+void StartWindowsCollector(blackbox::sentry::TcpClient& client);
+#endif
+```
+
+**(Note: The implementations `.cpp` for these were provided in the previous chat response. Ensure they are saved in the correct folders.)**
