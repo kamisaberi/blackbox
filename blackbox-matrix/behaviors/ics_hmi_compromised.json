@@ -1,0 +1,10 @@
+{
+  "name": "Compromised HMI Sending Bad Commands",
+  "eps": 15,
+  "patterns": [
+    { "weight": 0.6, "log": "MODBUS_TCP: WRITE_SINGLE_REGISTER: UNIT_ID=1 FUNC_CODE=06 REG=40099 VAL=9999 (EMERGENCY_OVERRIDE)" },
+    { "weight": 0.2, "log": "AUTH_FAIL: User 'operator' failed login from IP 45.33.2.1 (Geo: RU)" },
+    { "weight": 0.2, "log": "FIRMWARE_UPDATE: Initiating upload firmware.bin (Unsigned Source)" }
+  ],
+  "targets": ["192.168.0.50", "192.168.0.51"]
+}
