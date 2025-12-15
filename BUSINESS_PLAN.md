@@ -1,9 +1,3 @@
-This is a professional, investor-grade Business Plan for **Ignition AI**, focused on the commercialization of the **Blackbox** platform.
-
-It consolidates the technical architecture, market strategy, and financial vision we have developed into a single document suitable for Venture Capital (VC) review.
-
-***
-
 # IGNITION AI: BUSINESS PLAN
 **"Defense at the Speed of Code"**
 
