@@ -1,0 +1,9 @@
+{
+  "name": "Normal Office Activity",
+  "eps": 1,
+  "patterns": [
+    { "weight": 0.5, "log": "<EventID>4624</EventID> <Data>Logon Successful: User '{random_user}' Domain 'CORP'</Data>" },
+    { "weight": 0.3, "log": "<EventID>4688</EventID> <Data>New Process Name: C:\\Program Files\\Microsoft Office\\Office16\\WINWORD.EXE</Data>" },
+    { "weight": 0.2, "log": "<EventID>5140</EventID> <Data>A network share object was accessed. Share Name: \\\\fileserver\\docs</Data>" }
+  ]
+}
