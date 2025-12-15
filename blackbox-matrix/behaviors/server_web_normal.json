@@ -1,0 +1,18 @@
+{
+  "name": "Web Server Traffic",
+  "eps": 10,
+  "patterns": [
+    { 
+      "weight": 0.8, 
+      "log": "nginx: 192.168.1.{random_port} - - [15/Dec/2025:10:00:00 +0000] \"GET /api/v1/products HTTP/1.1\" 200 1024" 
+    },
+    { 
+      "weight": 0.1, 
+      "log": "nginx: 10.0.0.5 - - [15/Dec/2025:10:00:05 +0000] \"POST /login HTTP/1.1\" 302 0" 
+    },
+    { 
+      "weight": 0.1, 
+      "log": "systemd: Started Session {random_port} of user www-data." 
+    }
+  ]
+}
