@@ -1,0 +1,9 @@
+{
+  "name": "Normal IoT Telemetry",
+  "eps": 2,
+  "patterns": [
+    { "weight": 0.8, "log": "sensor_read temperature={random_port} status=ok" },
+    { "weight": 0.1, "log": "wifi_signal strength=-45dBm connected=true" },
+    { "weight": 0.1, "log": "heartbeat uptime=99999" }
+  ]
+}
