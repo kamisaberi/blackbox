@@ -1,0 +1,8 @@
+{
+  "name": "Web App Traffic",
+  "eps": 10,
+  "patterns": [
+    { "weight": 0.8, "log": "postgres[992]: LOG:  duration: 2.1 ms  statement: SELECT id, name FROM products WHERE category = {random_port}" },
+    { "weight": 0.2, "log": "postgres[992]: LOG:  duration: 4.5 ms  statement: INSERT INTO logs (user_id, action) VALUES (102, 'login')" }
+  ]
+}
