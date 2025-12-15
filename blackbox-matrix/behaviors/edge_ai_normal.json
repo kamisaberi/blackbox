@@ -1,0 +1,14 @@
+{
+  "name": "Edge AI Processing",
+  "eps": 5,
+  "patterns": [
+    { 
+      "weight": 0.9, 
+      "log": "deepstream-app: Inference completed. Objects detected: {random_port}. Latency: 15ms" 
+    },
+    { 
+      "weight": 0.1, 
+      "log": "tegra_stats: RAM 1980/3964MB (lfb 1x4MB) CPU [20%@1479,15%@1479,12%@1479,10%@1479]" 
+    }
+  ]
+}
