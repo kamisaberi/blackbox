@@ -1,162 +1,147 @@
 # ◼️ Blackbox
-### The AI-Native Flight Recorder for Enterprise Security
+### The AI-Native Flight Recorder for Enterprise & IoT Security
 
-<!-- [![Build Status](https://github.com/kamisaberi/blackbox/actions/workflows/build.yml/badge.svg)](https://github.com/ignition-ai/blackbox/actions) -->
-
-
-[![Version](https://img.shields.io/badge/version-0.1.0--alpha-blue)]()
-[![Stack](https://img.shields.io/badge/core-C%2B%2B20-00599C)]()
-[![Engine](https://img.shields.io/badge/inference-xInfer-orange)]()
+[![Build Status](https://img.shields.io/badge/build-passing-brightgreen)]()
+[![Core](https://img.shields.io/badge/core-C%2B%2B20-00599C)]()
+[![IoT](https://img.shields.io/badge/agent-C99-blue)]()
+[![Stack](https://img.shields.io/badge/stack-Go%20%7C%20React%20%7C%20PyTorch-orange)]()
 [![License](https://img.shields.io/badge/license-Proprietary-red)]()
 
 > **"Truth survives the crash."**
 
-**Blackbox** is a high-performance, inline Security Information and Event Management (SIEM) engine designed for the modern threat landscape. It functions as an indestructible network flight recorder, ingesting massive streams of telemetry, analyzing them in microseconds using embedded AI, and actively blocking threats before they penetrate the network core.
+**Blackbox** is a hyper-performant, distributed SIEM (Security Information and Event Management) engine designed for the modern threat landscape. Unlike legacy systems that index logs for later search, Blackbox sits **inline** with network traffic, using embedded AI to detect and block threats in microseconds.
 
-Unlike legacy SIEMs (Splunk, ELK) that rely on a "Store-First, Analyze-Later" architecture, Blackbox utilizes a **"Compute-First"** paradigm. By moving the AI inference layer directly into the ingestion pipeline, Blackbox eliminates the latency between infection and detection, transforming security from a passive log to a kinetic defense.
+It unifies Enterprise IT security with OT/IoT monitoring, scaling from a Raspberry Pi factory gateway to a 100,000 EPS data center cluster.
 
 ---
 
-## ⚡ The Blackbox Philosophy
+## ⚡ Key Capabilities
 
-### 1. Speed is Security
-In high-frequency trading, microseconds matter. In cybersecurity, they matter even more. Blackbox is built on a custom **C++ 20** architecture using lock-free ring buffers and SIMD-optimized parsing. It handles **100,000+ Events Per Second (EPS)** on commodity hardware with sub-millisecond latency.
+### 1. Kinetic Defense Engine (C++20)
+Built on `Boost.Asio` and `CUDA`, the core engine handles **100,000+ Events Per Second** on commodity hardware. It features zero-copy parsing, lock-free ring buffers, and micro-batched GPU inference.
 
-### 2. Inline AI, Not Offline Analysis
-Traditional AI security relies on batch processing logs hours after the event. Blackbox integrates our proprietary **`xInfer`** engine directly into the data plane. Every single log line—whether HTTP, Auth, or NetFlow—is vectorized and scored by a custom neural network in real-time.
+### 2. The IoT "Sentry" Network
+Extends visibility to the edge. **`blackbox-sentry-micro`** is a <50KB C99 agent that runs on routers, sensors, and embedded devices, communicating via highly efficient Protocol Buffers to the Core.
 
-### 3. The Signal-to-Noise Ratio
-99% of security logs are noise (KeepAlives, successful handshakes). Storing them costs millions. Blackbox uses intelligent inference to differentiate "Safe" noise from "Anomalous" signals.
-*   **Green Logs (Safe):** Discarded or summarized into metrics (saving ~90% storage).
-*   **Red Logs (Threats):** Full-fidelity capture stored in immutable cold storage.
+### 3. Inline AI Inference
+Integrates our proprietary **`xInfer`** technology. Logs are vectorized and scored by custom Autoencoders/Transformers *before* storage.
+*   **Anomaly Detection:** Flags Zero-Day attacks based on behavioral deviation.
+*   **Active Defense:** Automatically updates `iptables`/firewalls to block attackers instantly.
 
 ### 4. Air-Gap Sovereign
-Blackbox is designed for defense, intelligence, and critical infrastructure. It requires **zero internet connectivity**. All AI models are trained offline in the Simulator and deployed as frozen, compiled engines. No data ever leaves your perimeter.
+Designed for defense and critical infrastructure. Zero dependency on public clouds or external APIs. All models are trained in the local `Sim` lab and deployed as frozen binaries.
 
 ---
 
 ## 🏗️ System Architecture
 
-Blackbox is structured as a **Monorepo**, ensuring tight coupling between the training environment (Sim) and the deployment environment (Core).
+Blackbox operates as a Monorepo containing the entire ecosystem.
 
 ```mermaid
-flowchart LR
-    subgraph "The Edge (C++)"
-    A[Firewall / Syslog] -->|UDP 514| B(Ingest Gateway)
-    B -->|Zero-Copy| C{Parser & Tokenizer}
-    C -->|Tensors| D[xInfer Engine]
+graph LR
+    subgraph "The Edge (IoT/Server)"
+        S[Sentry Agent] -->|Protobuf/TCP| B(Ingest Gateway)
     end
 
-    subgraph "Decision Plane"
-    D -->|Score < 0.1| E[Drop & Count]
-    D -->|Score > 0.8| F[Hot Storage / Alert]
+    subgraph "Blackbox Core (C++)"
+        B -->|Zero-Copy| C{Parser & AI}
+        C -->|Score > 0.9| D[Active Defense]
+        D -.->|Block IP| FW[Firewall]
     end
 
-    subgraph "Control (Go & React)"
-    F -->|ClickHouse| G[Blackbox Tower API]
-    G -->|WebSocket| H[Analyst HUD]
+    subgraph "Data & Control"
+        C -->|Batch Write| DB[(ClickHouse)]
+        C -->|Pub/Sub| R[(Redis)]
+        R --> API[Tower API (Go)]
+        API -->|WebSocket| UI[React HUD]
     end
 ```
 
-### 📂 Module Directory
+### 📂 Module Breakdown
 
-| Module | Codename | Tech Stack | Responsibility |
+| Directory | Codename | Stack | Responsibility |
 | :--- | :--- | :--- | :--- |
-| **`/blackbox-core`** | **Recorder** | C++ 20, CUDA, Boost | The kernel of the system. Handles network I/O, parses raw logs using SIMD, executes AI models via TensorRT, and routes data. |
-| **`/blackbox-tower`** | **Tower** | Go (Golang) | The API control plane. Manages agent configuration, executes complex OLAP queries against ClickHouse, and handles authentication. |
-| **`/blackbox-hud`** | **HUD** | React, TypeScript, Vite | The "Heads Up Display" for analysts. Features a virtualized log stream renderer and WebGL-based threat mapping. |
-| **`/blackbox-sim`** | **Sim** | Python, PyTorch | The offline R&D lab. Used to train custom autoencoders on historical data and export optimized `.plan` files for the Core. |
-| **`/blackbox-deploy`** | **Chassis** | Docker, K8s, Helm | Infrastructure definitions. Contains the ClickHouse schema optimization and Kubernetes scaling policies. |
+| **`/blackbox-core`** | **The Engine** | C++ 20 | High-performance ingestion, AI inference, and routing logic. |
+| **`/blackbox-tower`** | **The Tower** | Go (Golang) | Control Plane API. Authentication, Search, and WebSocket broadcasting. |
+| **`/blackbox-hud`** | **The HUD** | React/TS | The Analyst Dashboard. Real-time virtualization of log streams. |
+| **`/blackbox-sim`** | **The Lab** | Python | Offline R&D. Trains models and exports artifacts (`.plan`, vocab) for the Core. |
+| **`/blackbox-sentry-micro`** | **The Sentry** | C99 | Ultra-lightweight IoT agent. Cross-compilable for ARM/MIPS. |
+| **`/blackbox-deploy`** | **The Chassis** | Docker/K8s | Infrastructure orchestration and database schemas. |
+| **`/blackbox-tests`** | **QA** | GTest/GoTest | Automated testing suite for all modules. |
 
 ---
 
-## 🚀 Performance Specifications
-
-| Metric | Specification |
-| :--- | :--- |
-| **Throughput** | 120,000 EPS (Single Node, 8 vCPU) |
-| **Ingest Latency** | < 250 microseconds |
-| **Inference Latency** | < 1.2 milliseconds (Batch Size 32) |
-| **Memory Footprint** | ~400MB (Idle) |
-| **Supported Protocols** | Syslog (RFC5424), TCP, UDP, HTTP JSON |
-| **Storage Backend** | ClickHouse (MergeTree Engine) |
-
----
-
-## 🛠️ Quick Start (Developer Mode)
+## 🛠️ Quick Start
 
 ### Prerequisites
 *   Docker & Docker Compose (v2.0+)
-*   NVIDIA Container Toolkit (Optional, for GPU support)
+*   Make
 
-### 1. Clone the Monorepo
+### 1. Initialize Data & Brain
+Before the system can run, we must generate the AI artifacts (Vocab/Scaler) using the Simulator.
+
 ```bash
-git clone https://github.com/ignition-ai/blackbox.git
-cd blackbox
+# 1. Create local data folders
+mkdir -p data/config data/models
+
+# 2. Run the AI Simulation to generate config files
+cd blackbox-sim
+docker build -t blackbox-sim .
+docker run --rm -v $(pwd)/../data/config:/app/data/artifacts blackbox-sim
+# Output: vocab.txt, scaler_params.txt, model.onnx created in data/config/
 ```
 
-### 2. Initialize the Environment
-We use a unified Make command to build the containers for the Core, API, and Web Interface.
+### 2. Launch the Stack
+Spin up the Core, API, Database, and Dashboard.
+
 ```bash
-# Builds images for blackbox-core, blackbox-tower, and blackbox-hud
-make build-all
+cd ../blackbox-deploy
+make build
+make up
 ```
 
-### 3. Launch the Stack
-Spins up the entire infrastructure, including the ClickHouse database and Redis message broker.
-```bash
-docker-compose up -d
-```
-
-### 4. Verify Status
+### 3. Access the System
 *   **The HUD (Dashboard):** [http://localhost:3000](http://localhost:3000)
 *   **The Tower (API):** [http://localhost:8080/health](http://localhost:8080/health)
-*   **The Vault (DB):** [http://localhost:8123](http://localhost:8123)
+*   **ClickHouse (DB):** [http://localhost:8123](http://localhost:8123)
 
-### 5. Send Test Telemetry
-Simulate a "Brute Force" attack log to test the ingestion pipeline.
+### 4. Connect an IoT Agent
+Simulate a remote device sending telemetry.
+
 ```bash
-echo "<134>Dec 10 10:00:00 auth-server sshd[123]: Failed password for root from 192.168.1.50 port 22 ssh2" | nc -u -w1 127.0.0.1 514
+cd ../blackbox-sentry-micro
+mkdir build && cd build
+cmake .. && make
+./sentry-micro
 ```
-*Check the HUD. You should see a red alert appear instantly.*
 
 ---
 
-## 🧠 The AI Workflow (Sim to Core)
+## 🧪 Testing
 
-Blackbox uses a specialized workflow to ensure models trained in Python work identically in C++.
+We use a unified test harness to verify C++ logic, Go APIs, and Python math.
 
-1.  **Ingest Data:** Load historical CSV/JSON logs into `/blackbox-sim/data`.
-2.  **Train:** Run `python train.py --template autoencoder`. This produces a `.xt` checkpoint.
-3.  **Compile:** Run `python export.py`. This fuses the layers and generates a hardware-specific `.plan` file (TensorRT Engine).
-4.  **Deploy:** Move the `.plan` file to `/blackbox-core/models`. The C++ engine hot-reloads the new brain automatically.
-
----
-
-## 🛣️ Roadmap
-
-*   **v0.1 (Alpha):** Core ingestion, Regex parsing, ClickHouse storage. (✅ Completed)
-*   **v0.5 (Beta):** `xInfer` integration, Basic Anomaly Detection, React HUD.
-*   **v1.0 (GA):** Distributed Agents, Enterprise SSO, RBAC.
-*   **v2.0 (Sovereign):** Hardware appliance support (FPGA offloading).
+```bash
+cd blackbox-tests
+./run_all.sh
+```
+*   **Core Tests:** Validates RingBuffer memory safety and Token Bucket logic.
+*   **Sim Tests:** Verifies Neural Network dimensions and normalization math.
+*   **Tower Tests:** Checks API endpoints and Config loading.
 
 ---
 
-## 🤝 Contributing
+## 🗺️ Roadmap
 
-This is a proprietary codebase managed by **Ignition AI**.
-However, we welcome contributions to the open-source SDKs located in `libs/`.
-
-1.  Fork the Project
-2.  Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3.  Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4.  Push to the Branch (`git push origin feature/AmazingFeature`)
-5.  Open a Pull Request
+- [x] **Phase I: The Kinetic MVP** (Ingestion, AI, Storage, Dashboard)
+- [x] **Phase II: IoT Expansion** (Sentry Micro Agent, Protobuf Support)
+- [ ] **Phase III: Enterprise Scale** (Kubernetes Helm Charts, RBAC, SSO)
+- [ ] **Phase IV: Hardware Acceleration** (FPGA Offloading for 1M+ EPS)
 
 ---
 
 ## 📄 License
 
 **Proprietary & Confidential.**
-Unauthorized copying of this file, via any medium, is strictly prohibited.
 Copyright © 2025 Ignition AI. All Rights Reserved.
+Unauthorized copying of this file, via any medium, is strictly prohibited.
