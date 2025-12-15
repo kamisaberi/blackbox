@@ -1,0 +1,24 @@
+name: "Scenario: Finance Dept Ransomware"
+description: "Simulates a Windows network. Lateral movement followed by mass encryption."
+duration_seconds: 400
+core_ip: "172.17.0.1"
+
+nodes:
+  # The Domain Controller (Quiet)
+  - name: "dc-01"
+    image: "server-linux"
+    count: 1
+    behavior: "win_dc_normal"
+
+  # Standard Employees (Writing Word Docs)
+  - name: "workstation-hr"
+    image: "server-linux"
+    count: 40
+    behavior: "win_office_worker"
+
+  # Patient Zero (The Victim)
+  - name: "workstation-finance-02"
+    image: "server-linux"
+    count: 1
+    behavior: "win_ransomware_attack"
+    start_delay: 20
