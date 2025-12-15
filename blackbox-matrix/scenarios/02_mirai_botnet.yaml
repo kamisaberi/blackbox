@@ -1,0 +1,24 @@
+name: "Scenario: Mirai Botnet Activation"
+description: "Simulates a quiet network that suddenly gets infected."
+duration_seconds: 300
+core_ip: "172.17.0.1" # The IP of the host machine (where Blackbox Core runs)
+
+nodes:
+  # 50 Normal IoT Devices (ARM32)
+  - name: "thermostat"
+    image: "iot-arm32"
+    count: 50
+    behavior: "iot_normal"
+
+  # 10 Edge Gateways (ARM64)
+  - name: "jetson-gateway"
+    image: "jetson-arm64"
+    count: 10
+    behavior: "iot_normal"
+
+  # 20 Infected Cameras (Start attacking after 10 seconds)
+  - name: "ip-camera-infected"
+    image: "iot-arm32"
+    count: 20
+    behavior: "iot_mirai_infect"
+    start_delay: 10
