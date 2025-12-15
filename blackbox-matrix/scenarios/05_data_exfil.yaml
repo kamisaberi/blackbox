@@ -1,0 +1,18 @@
+name: "Scenario: Low & Slow Database Leak"
+description: "High value SQL server. 12 hours compressed into 5 minutes."
+duration_seconds: 300
+core_ip: "172.17.0.1"
+
+nodes:
+  # The Web App talking to DB (Normal)
+  - name: "web-frontend"
+    image: "server-linux"
+    count: 5
+    behavior: "web_app_sql_normal"
+
+  # The Attacker (Low volume, high impact)
+  - name: "compromised-admin-laptop"
+    image: "server-linux"
+    count: 1
+    behavior: "db_slow_exfil"
+    start_delay: 0
