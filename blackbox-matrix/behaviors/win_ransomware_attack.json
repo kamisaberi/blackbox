@@ -1,0 +1,9 @@
+{
+  "name": "Ryuk/Conti Style Ransomware",
+  "eps": 50,
+  "patterns": [
+    { "weight": 0.1, "log": "<EventID>4688</EventID> <Data>Process: vssadmin.exe Arguments: Delete Shadows /All /Quiet</Data>" },
+    { "weight": 0.1, "log": "<EventID>4688</EventID> <Data>Process: cmd.exe Arguments: /c bcdedit /set {default} recoveryenabled No</Data>" },
+    { "weight": 0.8, "log": "<EventID>4663</EventID> <Data>Object Name: \\\\fileserver\\shared\\finance\\Q3_Report.xlsx.ENC Access Mask: 0x2 (WriteData)</Data>" }
+  ]
+}
