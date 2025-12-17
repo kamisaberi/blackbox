@@ -469,3 +469,247 @@ Work on **Mamba** in the R&D Lab (`blackbox-sim`) and aim to release it in **Ver
 
 # RL (Reinforcement Learning)
 
+**Reinforcement Learning (RL)** is the perfect technology to handle **Automated Response**.
+
+While your Autoencoder/LogBERT tells you **"Something is wrong,"** it doesn't tell you **"What to do about it."**
+*   Should you block the IP? (High risk of blocking a CEO).
+*   Should you just alert? (High risk of data leak if the analyst is sleeping).
+
+RL solves this by training an **Agent** to balance **Security vs. Business Continuity**.
+
+Here is the implementation plan for **"The Guardian"** (RL Response Engine).
+
+---
+
+### **1. The Architecture**
+
+We will use **OpenAI Gym** (now Gymnasium) to wrap your `blackbox-matrix` simulator.
+
+*   **State (Input):** `[Anomaly Score, Packet Velocity, IP Reputation Score, Time of Day]`
+*   **Action (Output):**
+    *   `0`: **Ignore** (Allow traffic).
+    *   `1`: **Flag** (Send to Dashboard, don't block).
+    *   `2`: **Throttling** (Limit bandwidth).
+    *   `3`: **Block** (Drop packet via Firewall).
+*   **Reward:**
+    *   **+10:** Blocked a true attack.
+    *   **-50:** Blocked a legitimate user (Business disruption).
+    *   **-10:** Missed an attack (Allowed malicious traffic).
+
+---
+
+### **2. Prerequisites**
+
+You need the standard RL libraries in your `blackbox-sim` environment.
+
+```bash
+pip install gymnasium stable-baselines3 shimmy
+```
+
+---
+
+### **3. The RL Environment (`src/rl/cyber_env.py`)**
+
+This script simulates the decision-making process. Ideally, it hooks into `blackbox-matrix`, but here is a self-contained version for training the policy.
+
+```python
+import gymnasium as gym
+from gymnasium import spaces
+import numpy as np
+import random
+
+class CyberDefenseEnv(gym.Env):
+    """
+    Custom Environment that follows gym interface.
+    The agent learns to block attacks while letting normal traffic pass.
+    """
+    metadata = {'render.modes': ['console']}
+
+    def __init__(self):
+        super(CyberDefenseEnv, self).__init__()
+
+        # Actions: 0=Ignore, 1=Flag, 2=Block
+        self.action_space = spaces.Discrete(3)
+
+        # Observation: [Anomaly_Score (0-1), EPS_Rate (normalized), Is_New_IP (0/1)]
+        self.observation_space = spaces.Box(low=0, high=1, shape=(3,), dtype=np.float32)
+
+        # Internal State
+        self.current_traffic_type = "normal" # normal or attack
+        self.steps = 0
+
+    def reset(self, seed=None, options=None):
+        super().reset(seed=seed)
+        self.steps = 0
+        return self._next_observation(), {}
+
+    def _next_observation(self):
+        # SIMULATION LOGIC: Generate a random traffic packet
+        # In production, this comes from blackbox-core metrics
+        
+        # 10% chance of attack
+        if random.random() < 0.1:
+            self.current_traffic_type = "attack"
+            # Attacks usually have high anomaly scores and high EPS
+            anomaly_score = random.uniform(0.7, 1.0)
+            eps = random.uniform(0.5, 1.0)
+            is_new_ip = 1.0
+        else:
+            self.current_traffic_type = "normal"
+            # Normal traffic has low scores
+            anomaly_score = random.uniform(0.0, 0.4)
+            eps = random.uniform(0.0, 0.6)
+            is_new_ip = 0.0 if random.random() > 0.2 else 1.0
+
+        return np.array([anomaly_score, eps, is_new_ip], dtype=np.float32)
+
+    def step(self, action):
+        reward = 0
+        terminated = False
+        truncated = False
+        
+        # --- REWARD FUNCTION ---
+        if self.current_traffic_type == "attack":
+            if action == 2: # Block
+                reward = 10  # Good job!
+            elif action == 1: # Flag
+                reward = 2   # Okay, but attack still got through
+            else: # Ignore
+                reward = -20 # FAIL: You let a hacker in
+        
+        elif self.current_traffic_type == "normal":
+            if action == 2: # Block
+                reward = -50 # CRITICAL FAIL: You blocked a valid user
+            elif action == 1: # Flag
+                reward = -1  # Minor annoyance (noise)
+            else: # Ignore
+                reward = 5   # Good job, business continues
+
+        self.steps += 1
+        if self.steps > 1000:
+            truncated = True
+
+        return self._next_observation(), reward, terminated, truncated, {}
+
+    def render(self, mode='console'):
+        pass
+```
+
+---
+
+### **4. The Training Script (`scripts/train_rl.py`)**
+
+We use **PPO (Proximal Policy Optimization)** because it is stable and works well for continuous decision making.
+
+```python
+import sys
+import os
+import torch
+from stable_baselines3 import PPO
+from stable_baselines3.common.env_util import make_vec_env
+
+# Add src to path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from src.rl.cyber_env import CyberDefenseEnv
+
+ARTIFACTS_DIR = "data/artifacts"
+
+def main():
+    os.makedirs(ARTIFACTS_DIR, exist_ok=True)
+    
+    # 1. Create Environment
+    # Vectorized environment allows training on multiple CPU cores
+    env = make_vec_env(CyberDefenseEnv, n_envs=4)
+
+    # 2. Define PPO Agent
+    model = PPO(
+        "MlpPolicy", 
+        env, 
+        verbose=1, 
+        learning_rate=0.0003,
+        gamma=0.99
+    )
+
+    # 3. Train
+    print(">>> Training RL Guardian...")
+    model.learn(total_timesteps=100000)
+    print(">>> Training Complete.")
+
+    # 4. Save PyTorch Model
+    model.save(f"{ARTIFACTS_DIR}/rl_guardian.zip")
+
+    # 5. Export to ONNX (For C++ Core)
+    # PPO Policy network is what makes the decision
+    print(">>> Exporting to ONNX...")
+    
+    class OnnxablePolicy(torch.nn.Module):
+        def __init__(self, policy):
+            super().__init__()
+            self.policy = policy
+
+        def forward(self, observation):
+            # Returns (action, value, log_prob), we only need action for inference
+            return self.policy(observation, deterministic=True)
+
+    onnx_policy = OnnxablePolicy(model.policy)
+    observation_shape = env.observation_space.shape
+    dummy_input = torch.randn(1, *observation_shape)
+
+    torch.onnx.export(
+        onnx_policy,
+        dummy_input,
+        f"{ARTIFACTS_DIR}/rl_guardian.onnx",
+        opset_version=11,
+        input_names=["observation"],
+        output_names=["action", "value", "log_prob"]
+    )
+    print(">>> Exported rl_guardian.onnx")
+
+if __name__ == "__main__":
+    main()
+```
+
+---
+
+### **5. Integration with C++ Core**
+
+Now you have `rl_guardian.onnx`. You need to integrate this into the **`AlertManager`**.
+
+Instead of a static threshold, the AlertManager will ask the RL model what to do.
+
+**Update `src/analysis/alert_manager.cpp`:**
+
+1.  **Load the Model:** Use `InferenceEngine` (which wraps TensorRT) to load `rl_guardian.plan`.
+2.  **Construct Input:**
+    ```cpp
+    std::array<float, 3> state;
+    state[0] = anomaly_score; // From Autoencoder
+    state[1] = common::Metrics::instance().get_eps_normalized();
+    state[2] = is_new_ip ? 1.0f : 0.0f;
+    ```
+3.  **Predict:**
+    ```cpp
+    float action_float = rl_brain_->evaluate(state);
+    int action = static_cast<int>(action_float); // 0, 1, or 2
+    ```
+4.  **Act:**
+    ```cpp
+    switch(action) {
+        case 0: // IGNORE
+            return; 
+        case 1: // ALERT ONLY
+            LOG_WARN("RL Flagged Suspicious Activity");
+            break;
+        case 2: // BLOCK
+            execute_block_action(ip);
+            break;
+    }
+    ```
+
+### **Why this makes Blackbox superior**
+
+*   **Competitors (Splunk/ELK):** Rely on humans writing "If X then Y" rules.
+*   **Blackbox:** Learns from the simulation. If blocking a certain pattern results in too many false positives (negative reward), the RL agent **learns to stop blocking it** automatically.
+
+You are creating a system that **adapts** to the attacker.
