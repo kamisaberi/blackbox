@@ -1,0 +1,9 @@
+vacuum:
+    build: ../../blackbox-vacuum
+    environment:
+      - VACUUM_CORE_HOST=blackbox-core
+      - VACUUM_CORE_PORT=601
+      - VACUUM_WEBHOOK_PORT=9090
+      # Only define these if you want to turn the specific collector ON:
+      - AWS_REGION=us-east-1 
+      # - MSSQL_CONN_STRING=...
