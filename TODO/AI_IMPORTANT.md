@@ -257,3 +257,211 @@ If you want to pursue this, I can generate the **Python Training Script for a Ma
 
 
 
+This is the implementation of a **Mamba (State Space Model)** specifically designed for **Log Anomaly Detection** in `blackbox-sim`.
+
+This model will learn the "Long-Term Narrative" of your network. Unlike the Autoencoder (which looks at one log) or the Transformer (which looks at ~512 logs), Mamba can maintain the context of **thousands of logs** efficiently, allowing it to detect "Low and Slow" attacks that span hours or days.
+
+### **1. Prerequisites**
+
+Mamba requires specific CUDA kernels. You must run this on a machine with an NVIDIA GPU.
+
+```bash
+# Inside blackbox-sim
+pip install torch transformers
+pip install causal-conv1d>=1.2.0
+pip install mamba-ssm>=1.2.0
+```
+
+---
+
+### **2. The Mamba Model (`src/models/mamba_log.py`)**
+
+**Role:** The Architecture.
+**Design:** It uses an Embedding layer to convert Log IDs to vectors, passes them through Mamba blocks (SSM), and predicts the next log template ID.
+
+```python
+import torch
+import torch.nn as nn
+from mamba_ssm import Mamba
+
+class MambaLogModel(nn.Module):
+    def __init__(self, vocab_size, d_model=128, n_layers=2, dropout=0.1):
+        super(MambaLogModel, self).__init__()
+        
+        self.d_model = d_model
+        
+        # 1. Embedding Layer
+        # Converts discrete Log IDs (e.g., 405) to continuous vectors
+        self.embedding = nn.Embedding(vocab_size, d_model)
+        
+        # 2. Mamba Layers (The SSM Backbone)
+        # Unlike Transformers, this has Linear Complexity O(N)
+        self.layers = nn.ModuleList([
+            Mamba(
+                d_model=d_model, # Model dimension (D)
+                d_state=16,      # SSM state expansion factor (N)
+                d_conv=4,        # Local convolution width
+                expand=2         # Block expansion factor
+            ) for _ in range(n_layers)
+        ])
+        
+        # Normalization & Dropout
+        self.norm = nn.LayerNorm(d_model)
+        self.dropout = nn.Dropout(dropout)
+        
+        # 3. Prediction Head
+        # Predicts the NEXT log template in the sequence
+        self.lm_head = nn.Linear(d_model, vocab_size)
+
+    def forward(self, x):
+        # x: [Batch, Seq_Len] (Indices)
+        
+        x = self.embedding(x)
+        
+        # Pass through Mamba blocks
+        for layer in self.layers:
+            x = layer(x)
+            
+        x = self.norm(x)
+        x = self.dropout(x)
+        
+        # Project back to Vocab size
+        logits = self.lm_head(x)
+        
+        return logits
+```
+
+---
+
+### **3. The Training Script (`scripts/train_mamba.py`)**
+
+**Role:** The Teacher.
+**Strategy:** **Next Token Prediction (Self-Supervised)**.
+We feed the model a sequence of logs: `[Login, FileOpen, Read]`
+We ask it to predict: `[FileOpen, Read, Logout]`
+If the actual next log is `[Delete]`, the Loss spikes -> **Anomaly**.
+
+```python
+import sys
+import os
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import numpy as np
+
+# Add src to path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from src.models.mamba_log import MambaLogModel
+from src.preprocessing.tokenizer import LogTokenizer
+
+# --- CONFIGURATION ---
+DATA_PATH = "data/raw/training_logs.txt"
+ARTIFACTS_DIR = "data/artifacts"
+VOCAB_SIZE = 5000
+SEQ_LEN = 1024  # Mamba handles long sequences easily!
+BATCH_SIZE = 16 # Adjust based on GPU VRAM
+EPOCHS = 10
+LR = 1e-4
+
+def main():
+    os.makedirs(ARTIFACTS_DIR, exist_ok=True)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f">>> Mamba Training on: {device}")
+
+    if device.type == 'cpu':
+        print("WARNING: Mamba is extremely slow on CPU. GPU is highly recommended.")
+
+    # 1. Load Data
+    print(">>> Loading Data...")
+    with open(DATA_PATH, 'r') as f:
+        logs = f.readlines()
+
+    # 2. Tokenize
+    tokenizer = LogTokenizer(vocab_size=VOCAB_SIZE, seq_len=SEQ_LEN)
+    tokenizer.build_vocab(logs)
+    tokenizer.save_vocab(f"{ARTIFACTS_DIR}/vocab_mamba.txt")
+
+    # Convert logs to integers
+    # Flatten all logs into one giant stream for sequence training
+    print(">>> Vectorizing...")
+    full_stream = []
+    for log in logs:
+        # We take just the first few tokens of each log line for simplicity 
+        # or treat the whole log file as one continuous timeline
+        full_stream.extend(tokenizer.encode(log))
+    
+    data_tensor = torch.tensor(full_stream, dtype=torch.long)
+    num_sequences = len(data_tensor) // SEQ_LEN
+    data_tensor = data_tensor[:num_sequences*SEQ_LEN].view(num_sequences, SEQ_LEN)
+    
+    print(f"    Training on {num_sequences} sequences of length {SEQ_LEN}")
+
+    # 3. Init Model
+    model = MambaLogModel(vocab_size=tokenizer.vocab_size).to(device)
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.AdamW(model.parameters(), lr=LR)
+
+    # 4. Training Loop
+    print(">>> Starting Training...")
+    model.train()
+
+    for epoch in range(EPOCHS):
+        total_loss = 0
+        permutation = torch.randperm(data_tensor.size(0))
+
+        for i in range(0, data_tensor.size(0), BATCH_SIZE):
+            indices = permutation[i:i+BATCH_SIZE]
+            batch = data_tensor[indices].to(device)
+            
+            # Input: Sequence [0 ... N-1]
+            # Target: Sequence [1 ... N] (Next Token)
+            input_seq = batch[:, :-1]
+            target_seq = batch[:, 1:]
+
+            optimizer.zero_grad()
+            
+            logits = model(input_seq)
+            
+            # Reshape for Loss [Batch*Seq, Vocab]
+            loss = criterion(logits.reshape(-1, tokenizer.vocab_size), target_seq.reshape(-1))
+            
+            loss.backward()
+            optimizer.step()
+            total_loss += loss.item()
+
+        print(f"    Epoch {epoch+1}/{EPOCHS} | Loss: {total_loss / (len(data_tensor)/BATCH_SIZE):.4f}")
+
+    # 5. Save Weights (PyTorch)
+    # Note: ONNX export for Mamba is currently experimental/complex.
+    # We save the weights to load into a custom C++ engine later.
+    torch.save(model.state_dict(), f"{ARTIFACTS_DIR}/mamba_model.pth")
+    print(">>> Model Saved.")
+
+if __name__ == "__main__":
+    main()
+```
+
+---
+
+### **How to Deploy Mamba to `blackbox-core`**
+
+This is the hardest part. Unlike standard CNNs/Transformers, Mamba isn't fully supported by TensorRT's default parsers *yet*.
+
+You have **two options** to run this C++ side:
+
+#### **Option A: The "Bleeding Edge" Path (Custom CUDA Kernel)**
+This gives you the **Maximum Performance (100k EPS)**.
+1.  In `xInfer`, you must write a C++ wrapper that loads the `.pth` weights manually.
+2.  You must include the **Selective Scan (S6)** CUDA kernel (available in the `mamba-ssm` repo or `flash-attention` repo) directly in your `blackbox-core/src/analysis` folder.
+3.  `InferenceEngine.cpp` calls this kernel directly.
+
+#### **Option B: The "Hybrid" Path (Python Sidecar)**
+Since Mamba is new, you might run the inference in a highly optimized Python container (using the `blackbox-sim` docker image) alongside the C++ Core.
+1.  **C++ Core** receives logs -> Sends Batch to **Python Mamba Container** via Shared Memory (extremely fast).
+2.  **Python Container** runs inference using PyTorch/Mamba.
+3.  **Python Container** returns Anomaly Score to C++.
+
+**Recommendation:**
+For **Version 1.0**, use the **LogBERT (Transformer)** approach I gave you earlier because TensorRT supports it natively (easy deployment).
+Work on **Mamba** in the R&D Lab (`blackbox-sim`) and aim to release it in **Version 2.0** once TensorRT adds native support (which is expected soon). This balances innovation with engineering stability.
