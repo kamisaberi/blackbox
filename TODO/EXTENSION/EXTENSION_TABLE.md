@@ -207,3 +207,174 @@ This saves you from writing 100 different database connectors yourself. You focu
 
 
 
+# give me the list of applications that i should create scode in blackbox-vacuuum
+
+
+
+You need to expand **`blackbox-vacuum`** to cover the **"Big 6"** categories of enterprise data. Since the C++ Core waits for TCP streams, the Vacuum's job is to connect to APIs, fetch data, convert it to a single line of JSON, and push it.
+
+Here is the definitive list of applications you should write code for, structured by priority and file name.
+
+### **Structure of `blackbox-vacuum`**
+
+First, define a clean interface so you can plug in new apps easily.
+
+```go
+// internal/collector.go
+type Collector interface {
+    Name() string
+    Start(coreConn net.Conn) 
+}
+```
+
+---
+
+### **1. Cloud Infrastructure (Priority: Critical)**
+*Hackers attack here to steal compute power (Crypto mining) or data buckets.*
+
+| Application | File Name | Method / API | Data to Extract |
+| :--- | :--- | :--- | :--- |
+| **AWS** | `aws_cloudtrail.go` | **AWS SDK (Go)**. Poll `LookupEvents`. | IAM changes, S3 bucket access, EC2 instance creation. |
+| **Azure** | `azure_monitor.go` | **Azure Monitor REST API**. | Sign-ins, Resource modifications, KeyVault access. |
+| **Google Cloud** | `gcp_audit.go` | **Cloud Logging API**. | Admin activity, Firewall rule changes. |
+
+### **2. Identity & Access (Priority: High)**
+*The "Keys to the Kingdom".*
+
+| Application | File Name | Method / API | Data to Extract |
+| :--- | :--- | :--- | :--- |
+| **Okta** | `okta_poller.go` | **Okta System Log API**. | Failed logins, MFA bypass attempts, User suspension. |
+| **Active Directory** | `ldap_monitor.go` | **LDAP / Go**. | (Usually done by Sentry agent on DC, but Vacuum can poll LDAP for user group changes). |
+| **Auth0** | `auth0_logs.go` | **Management API**. | Unknown location logins, Brute force detection. |
+
+### **3. SaaS Productivity (Priority: Medium)**
+*Where "Insider Threats" and Data Leaks happen.*
+
+| Application | File Name | Method / API | Data to Extract |
+| :--- | :--- | :--- | :--- |
+| **Office 365** | `o365_graph.go` | **Microsoft Graph API**. | Email forwarding rules, SharePoint file downloads, Teams logins. |
+| **Google Workspace** | `gworkspace_audit.go`| **Admin SDK API**. | Google Drive exports, External sharing permissions. |
+| **Slack** | `slack_audit.go` | **Audit Logs API** (Enterprise) or **Events API**. | File uploads, Channel joins, App installations. |
+| **Salesforce** | `salesforce_event.go`| **Event Log Files API**. | Report exports (stealing customer lists), Login geography. |
+
+### **4. Databases (Priority: High)**
+*Beyond SQL Server (which we discussed), cover the open-source world.*
+
+| Application | File Name | Method / API | Data to Extract |
+| :--- | :--- | :--- | :--- |
+| **PostgreSQL** | `postgres_audit.go`| **`lib/pq` Driver**. Query `pg_stat_activity` or specific audit tables. | Slow queries, connections from unknown IPs. |
+| **MongoDB** | `mongo_profiler.go`| **Mongo Driver**. Query `system.profile` collection. | unauthorized collection scans, admin commands. |
+| **Redis** | `redis_monitor.go` | **Redis Client**. Run `MONITOR` command (carefully) or `SLOWLOG`. | `FLUSHALL` commands, `KEYS *` (Performance killer). |
+
+### **5. Container Orchestration (Priority: Modern)**
+*Critical for modern tech companies.*
+
+| Application | File Name | Method / API | Data to Extract |
+| :--- | :--- | :--- | :--- |
+| **Kubernetes** | `k8s_audit.go` | **Client-go**. Watch `Events` API. | `kubectl exec` (shell into container), Pod deletions, Secret access. |
+| **Docker Hub** | `docker_hub.go` | **Webhooks**. | New image pushes, Tag updates. |
+
+---
+
+### **Code Example: The AWS CloudTrail Collector**
+
+Here is the implementation for **AWS**. This is the most common request from investors and clients.
+
+**File:** `blackbox-vacuum/collectors/aws_cloudtrail.go`
+
+```go
+package collectors
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net"
+	"time"
+
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/cloudtrail"
+)
+
+type AWSCollector struct {
+	Region string
+}
+
+func (a *AWSCollector) Start(coreConn net.Conn) {
+	// 1. Load AWS Config (Reads ~/.aws/credentials or ENV vars automatically)
+	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion(a.Region))
+	if err != nil {
+		log.Printf("[AWS] Init Error: %v", err)
+		return
+	}
+
+	client := cloudtrail.NewFromConfig(cfg)
+	log.Println("[AWS] Polling CloudTrail...")
+
+	// Keep track of the last event time to avoid duplicates
+	lastSeen := time.Now().Add(-10 * time.Minute)
+
+	ticker := time.NewTicker(30 * time.Second)
+	for range ticker.C {
+		// 2. Query API
+		output, err := client.LookupEvents(context.TODO(), &cloudtrail.LookupEventsInput{
+			StartTime: &lastSeen,
+			MaxResults: awsInt32(50),
+		})
+
+		if err != nil {
+			log.Printf("[AWS] API Error: %v", err)
+			continue
+		}
+
+		// 3. Process Events
+		for _, event := range output.Events {
+			if event.EventTime.Before(lastSeen) || event.EventTime.Equal(lastSeen) {
+				continue
+			}
+			lastSeen = *event.EventTime
+
+			// 4. Flatten JSON structure for Blackbox Core
+			logEntry := map[string]interface{}{
+				"source":    "aws_cloudtrail",
+				"event":     *event.EventName,
+				"user":      *event.Username,
+				"src_ip":    "unknown", // Sometimes in CloudTrailEventData
+				"ts":        event.EventTime.Unix(),
+				"raw_cloud": *event.CloudTrailEvent, // Full JSON payload
+			}
+
+			jsonBytes, _ := json.Marshal(logEntry)
+			
+			// 5. Push to Core (TCP)
+			// Prefix with 'AWS:' so ParserEngine knows how to handle it
+			payload := fmt.Sprintf("AWS: %s\n", string(jsonBytes))
+			coreConn.Write([]byte(payload))
+		}
+	}
+}
+
+func awsInt32(v int32) *int32 { return &v }
+```
+
+### **How to Integrate This**
+
+1.  **Dependency:** `go get github.com/aws/aws-sdk-go-v2`
+2.  **C++ Core Parser Update (`ParserEngine.cpp`):**
+
+```cpp
+if (common::StringUtils::starts_with(msg, "AWS:")) {
+    auto json = parse_json(msg.substr(5));
+    output.host = "AWS-Cloud";
+    output.service = json["event"]; // e.g. "ConsoleLogin"
+    output.message = json["user"] + " performed " + json["event"];
+    
+    // IMPORTANT: The AI needs to see the raw JSON to find anomalies 
+    // in parameters (e.g. creating a massive EC2 instance).
+}
+```
+
+### **Summary of Work**
+
+To make `blackbox-vacuum` complete, create a folder `collectors/` and implement one Go file for each of the applications listed above. Start with **AWS**, **Kubernetes**, and **Slack**, as these cover Infrastructure, DevOps, and Communication.
