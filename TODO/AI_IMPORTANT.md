@@ -873,3 +873,6 @@ To make this enterprise-ready, you don't just hardcode the list.
 3.  **Lockdown Mode:** Switch the agent to "Enforce." Now, if the user tries to run `minecraft.exe` or `unknown_virus.exe`, it gets blocked because it's not on the whitelist.
 
 This is exactly how **Carbon Black** and **AppLocker** work.
+
+
+# PREVENSION PAPERS
