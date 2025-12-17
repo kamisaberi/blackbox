@@ -713,3 +713,6 @@ Instead of a static threshold, the AlertManager will ask the RL model what to do
 *   **Blackbox:** Learns from the simulation. If blocking a certain pattern results in too many false positives (negative reward), the RL agent **learns to stop blocking it** automatically.
 
 You are creating a system that **adapts** to the attacker.
+
+
+# PREVENSION SYSTEM 
