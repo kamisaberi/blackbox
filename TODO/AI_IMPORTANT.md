@@ -465,3 +465,7 @@ Since Mamba is new, you might run the inference in a highly optimized Python con
 **Recommendation:**
 For **Version 1.0**, use the **LogBERT (Transformer)** approach I gave you earlier because TensorRT supports it natively (easy deployment).
 Work on **Mamba** in the R&D Lab (`blackbox-sim`) and aim to release it in **Version 2.0** once TensorRT adds native support (which is expected soon). This balances innovation with engineering stability.
+
+
+# RL (Reinforcement Learning)
+
