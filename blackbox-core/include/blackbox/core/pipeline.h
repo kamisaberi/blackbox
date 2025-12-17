@@ -29,6 +29,8 @@
 // Ops
 #include "blackbox/core/admin_server.h"
 
+#include "blackbox/ingest/netflow_server.h"
+
 namespace blackbox::core {
 
     class Pipeline {
@@ -49,6 +51,11 @@ namespace blackbox::core {
         std::atomic<bool> running_{false};
         std::thread ingest_thread_;
         std::thread processing_thread_;
+
+
+        std::unique_ptr<ingest::NetflowServer> netflow_server_;
+
+
 
         // --- COMPONENTS ---
 
