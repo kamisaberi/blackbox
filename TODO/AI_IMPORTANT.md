@@ -716,3 +716,160 @@ You are creating a system that **adapts** to the attacker.
 
 
 # PREVENSION SYSTEM 
+
+
+Yes. This transforms your system from **Detection (SIEM)** to **Prevention (EPP/DLP)**. This is a massive value-add because it stops the damage *before* it happens.
+
+You are describing **"Policy Enforcement."**
+
+Here are **3 Active Prevention Features** you can add to the **Blackbox Sentry Agent** to force safe behavior.
+
+---
+
+### **1. "Bash Guard" (Command Blocking)**
+**Target:** Linux Servers / IoT / Developers
+*   **The Problem:** An admin gets lazy and types `rm -rf /` or `chmod 777 -R /var/www`. Or a hacker tries to run `nmap` or `cryptominer`.
+*   **The Feature:** A "Pre-Execution" filter. The Agent hooks into the OS process execution. If a blacklisted command is attempted, it is denied immediately with "Permission Denied."
+*   **How it works (The Architecture):**
+    1.  **Blackbox Core** pushes a `blocked_commands.txt` list to the Agent (e.g., `nc -e`, `nmap`, `dd`, `rm -rf`).
+    2.  **Sentry Agent** uses **eBPF (Linux)** or **Process Instrumentation (Windows)** to intercept `execve()` calls.
+    3.  If the command matches the list, the Agent returns an error code to the OS kernel, preventing the process from ever starting.
+
+### **2. "USB Airlock" (Peripheral Control)**
+**Target:** Corporate Laptops / Industrial PCs
+*   **The Problem:** An employee finds a USB stick in the parking lot and plugs it in (The "Stuxnet" vector). Or an insider tries to copy the customer database to a flash drive.
+*   **The Feature:** Block all USB Storage devices by default.
+*   **The Logic:**
+    *   **Default:** Mouse/Keyboard = OK. Storage = BLOCKED.
+    *   **Override:** User requests access via the Dashboard. Admin approves. The Sentry Agent allows *that specific* Serial Number for 1 hour.
+*   **Implementation:** Manipulating `/sys/bus/usb/drivers/usb-storage` (Linux) or Registry Keys (Windows).
+
+### **3. "The Clipboard Shield" (DLP Lite)**
+**Target:** Employee Workstations
+*   **The Problem:** A developer copies an AWS Secret Key or a Customer Credit Card number and tries to paste it into ChatGPT or a public Slack channel.
+*   **The Feature:** Clipboard Sanitation.
+*   **The Logic:**
+    1.  Sentry Agent monitors the System Clipboard chain.
+    2.  If the clipboard content matches a Regex (Credit Card, Private Key), the Agent **clears the clipboard** instantly.
+    3.  A popup notification appears: "Action Blocked by Blackbox Security Policy."
+
+---
+
+### **Implementation Focus: "The Process Killer" (Simplified Bash Guard)**
+
+Writing a full eBPF hook is complex. A simpler, MVP version for your C++ Agent is a **Reactive Process Killer**. It watches for bad processes and kills them instantly.
+
+Here is the code for **`blackbox-sentry/src/collectors/linux/process_guard.cpp`**.
+
+#### **The Code**
+
+```cpp
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <vector>
+#include <thread>
+#include <chrono>
+#include <filesystem>
+#include <signal.h>
+#include <unistd.h>
+
+// Simple whitelist/blacklist structure
+struct Policy {
+    std::vector<std::string> blacklisted_names = {"nc", "nmap", "xmrig", "hydra"};
+    std::vector<std::string> blacklisted_args = {"rm -rf /", ":(){ :|:& };:"}; // Fork bomb
+};
+
+class ProcessGuard {
+public:
+    ProcessGuard() : running_(true) {
+        worker_ = std::thread(&ProcessGuard::monitor_loop, this);
+    }
+
+    ~ProcessGuard() {
+        running_ = false;
+        if (worker_.joinable()) worker_.join();
+    }
+
+private:
+    void monitor_loop() {
+        Policy policy;
+        
+        while (running_) {
+            // Iterate over /proc to find running processes
+            for (const auto& entry : std::filesystem::directory_iterator("/proc")) {
+                if (!entry.is_directory()) continue;
+
+                // Check if directory name is a PID (number)
+                std::string pid_str = entry.path().filename();
+                if (!std::all_of(pid_str.begin(), pid_str.end(), ::isdigit)) continue;
+
+                int pid = std::stoi(pid_str);
+                
+                // Read /proc/[pid]/comm (Command Name)
+                std::string cmd_path = entry.path() / "comm";
+                std::ifstream cmd_file(cmd_path);
+                std::string cmd_name;
+                if (cmd_file >> cmd_name) {
+                    
+                    // CHECK 1: Is the binary name blacklisted?
+                    for (const auto& bad_bin : policy.blacklisted_names) {
+                        if (cmd_name == bad_bin) {
+                            kill_process(pid, cmd_name, "Blacklisted Binary");
+                        }
+                    }
+                }
+
+                // Read /proc/[pid]/cmdline (Full arguments)
+                // This captures "rm -rf /" even if the binary is just "rm"
+                std::string args_path = entry.path() / "cmdline";
+                std::ifstream args_file(args_path);
+                std::string cmd_args;
+                // cmdline arguments are null-separated, read greedy
+                std::getline(args_file, cmd_args, '\0'); 
+                
+                // CHECK 2: Do arguments match dangerous patterns?
+                for (const auto& bad_arg : policy.blacklisted_args) {
+                    if (cmd_args.find(bad_arg) != std::string::npos) {
+                        kill_process(pid, cmd_args, "Dangerous Argument");
+                    }
+                }
+            }
+
+            // Sleep briefly to save CPU (100ms)
+            // In C++20 we would use eBPF to be event-driven instead of polling
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+    }
+
+    void kill_process(int pid, const std::string& name, const std::string& reason) {
+        // Send SIGKILL (9) - Process cannot ignore this
+        int result = kill(pid, SIGKILL);
+        
+        if (result == 0) {
+            std::cout << "[SENTRY] PREVENTED: Killed process " << pid 
+                      << " (" << name << ") - Reason: " << reason << std::endl;
+            
+            // TODO: Send Alert to Core via TcpClient
+        }
+    }
+
+    std::atomic<bool> running_;
+    std::thread worker_;
+};
+```
+
+### **How to Integrate**
+
+1.  Add this class to your `blackbox-sentry`.
+2.  Instantiate it in `main.cpp`.
+3.  **Result:** If a user tries to run `nmap` or `nc` (Netcat) on the machine, the process vanishes instantly.
+
+### **The "Training Mode" Strategy**
+
+To make this enterprise-ready, you don't just hardcode the list.
+1.  **Learning Mode:** Run the agent for 1 week. It records every process the user runs.
+2.  **Baseline:** The Core builds a list of "Allowed Apps" (Chrome, VS Code, Slack).
+3.  **Lockdown Mode:** Switch the agent to "Enforce." Now, if the user tries to run `minecraft.exe` or `unknown_virus.exe`, it gets blocked because it's not on the whitelist.
+
+This is exactly how **Carbon Black** and **AppLocker** work.
