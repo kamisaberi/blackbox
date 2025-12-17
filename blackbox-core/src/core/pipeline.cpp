@@ -64,6 +64,14 @@ namespace blackbox::core {
             LOG_CRITICAL("Failed to initialize pipeline components: " + std::string(e.what()));
             throw; // Fatal error, crash the app
         }
+
+
+        // In Pipeline Constructor
+netflow_server_ = std::make_unique<ingest::NetflowServer>(
+    *io_context_,
+    2055, // Standard NetFlow port
+    ring_buffer_
+);
     }
 
     // =========================================================
