@@ -57,6 +57,18 @@ func main() {
 		registry.Register(&database.MSSQLCollector{ConnString: cfg.MSSQLConn})
 	}
 
+	// Postgres
+	if cfg.PostgresConn != "" {
+    	registry.Register(&database.PostgresCollector{ConnString: cfg.PostgresConn})
+	}
+
+	// Okta
+	if cfg.OktaDomain != "" {
+		registry.Register(&identity.OktaCollector{
+			Domain: cfg.OktaDomain, 
+			APIToken: cfg.OktaAPIToken,
+		})
+	}
 	// (Add more collectors here as you build them: Okta, Postgres, etc.)
 
 	// 5. Start Polling Loops
