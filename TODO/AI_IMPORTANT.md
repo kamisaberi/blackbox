@@ -251,3 +251,9 @@ If you liked the idea of NeRF because you wanted to **Visualize** the network st
 
 **Next Step:**
 If you want to pursue this, I can generate the **Python Training Script for a Mamba-based Log Analyzer** for `blackbox-sim`. Do you want to see that?
+
+
+# MAMBA CODE
+
+
+
