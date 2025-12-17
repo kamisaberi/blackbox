@@ -84,3 +84,92 @@ If you want to be the best in the world, implement them in this order:
 
 
 
+To make Blackbox the "Best in the World," you need to implement algorithms that move beyond simple statistics and understand **Semantics** (Meaning) and **Topology** (Relationships).
+
+Here is the curated list of the most impactful papers for **LogBERT**, **NER**, and **GNNs**, specifically selected because they can be optimized for your **`xInfer` (C++/TensorRT)** engine.
+
+---
+
+### **1. LogBERT & Semantic Anomaly Detection**
+**Goal:** Replace the numeric Autoencoder with a Transformer that understands log "grammar."
+**Why:** This reduces false positives by understanding that `User Admin` and `User Root` are similar contextually, while `User 404` is not.
+
+#### **A. The Foundation Paper**
+*   **Title:** **"LogBERT: Log Anomaly Detection via BERT"** (IJCNN 2021)
+*   **Authors:** Haixuan Guo et al.
+*   **Core Concept:** Trains a BERT model using two self-supervised tasks: "Masked Log Key Prediction" and "Volume of Hypersphere." It learns normal log sequences and flags deviations.
+*   **Implementation in Blackbox:** Use `xTorch` to train a **DistilBERT** (smaller/faster) on this objective. Export to ONNX for `xInfer`.
+*   **[Read Paper](https://arxiv.org/abs/2103.04475)**
+
+#### **B. The Robustness Upgrade**
+*   **Title:** **"LogRobust: Robust Log Anomaly Detection via Semantic Information"** (FSE 2019)
+*   **Authors:** Xu Zhang et al.
+*   **Core Concept:** Uses **TF-IDF** and **Word2Vec** to handle unstable log data (where logs change slightly over time due to software updates). It uses an Attention-based Bi-LSTM.
+*   **Implementation in Blackbox:** Great for the "Stable" version of your AI that doesn't need constant retraining.
+*   **[Read Paper](https://arxiv.org/abs/1905.08955)**
+
+#### **C. The "Parsing-Free" Approach**
+*   **Title:** **"NeuralLog: Natural Language Inference for Log Anomaly Detection"** (ASE 2021)
+*   **Authors:** Van-Hoang Le et al.
+*   **Core Concept:** Bypasses the need for a log parser entirely. It treats raw log messages as natural language sentences and uses BERT for classification.
+*   **Implementation in Blackbox:** This is the ultimate "Zero Config" goal. It removes the need for `ParserEngine` regex rules, relying entirely on the AI.
+*   **[Read Paper](https://arxiv.org/abs/2108.13063)**
+
+---
+
+### **2. NER (Named Entity Recognition) for "Universal Parsing"**
+**Goal:** Automatically extract IPs, Usernames, and Error Codes without writing Regex.
+**Why:** Regex is slow and brittle. A Token Classification model running in `xInfer` is robust and handles new log formats automatically.
+
+#### **A. The Self-Supervised Parser**
+*   **Title:** **"NuLog: A Self-Supervised Log Parsing Approach"**
+*   **Authors:** Sasho Nedelkoski et al.
+*   **Core Concept:** Uses a Masked Language Model (like BERT) to identify which parts of a log are **Variables** (IPs, Users) and which parts are **Templates** (Static text).
+*   **Implementation in Blackbox:** Train this in `blackbox-sim`. Use it to auto-generate parsing rules for `blackbox-core`.
+*   **[Read Paper](https://arxiv.org/abs/2003.07905)**
+
+#### **B. Cyber Entity Extraction**
+*   **Title:** **"CASIE: Extracting Cybersecurity Event Information from Text"** (AAAI 2020)
+*   **Authors:** Satycona et al.
+*   **Core Concept:** A specific architecture for extracting 5 types of cyber events (Phishing, Ransomware, etc.) and their arguments (Attacker, Victim, Tool).
+*   **Implementation in Blackbox:** Use this for the **Unstructured Data** coming into `blackbox-vacuum` (like Threat Intel feeds or Emails).
+*   **[Read Paper](https://arxiv.org/abs/2009.08149)**
+
+---
+
+### **3. Graph Neural Networks (GNN) for Lateral Movement**
+**Goal:** Detect hackers moving between machines (Topology anomalies).
+**Why:** Logs are linear. Attacks are graphs. GNNs find the "Path" of the attacker.
+
+#### **A. The Intrusion Detection Graph**
+*   **Title:** **"E-GraphSAGE: A Graph Neural Network based Intrusion Detection System"** (IEEE 2021)
+*   **Authors:** Lo et al.
+*   **Core Concept:** Captures the **Edge Features** (Flow duration, byte count) and **Node Features** (IP reputation) to detect intrusions in IoT networks.
+*   **Implementation in Blackbox:** Your `xInfer` engine calculates the graph in RAM. The GNN runs inference on the *structure* of the network traffic.
+*   **[Read Paper](https://arxiv.org/abs/2103.16329)**
+
+#### **B. Process-Level Graphs (EDR)**
+*   **Title:** **"Log2Vec: A Heterogeneous Graph Embedding Based Approach for Detecting Cyber Threats"**
+*   **Authors:** Liu et al.
+*   **Core Concept:** Converts logs into a Heterogeneous Graph (Users, Machines, Processes, Files). It detects malicious interactions between these entities (e.g., PowerShell accessing `lsass.exe`).
+*   **Implementation in Blackbox:** This is for the **Sentry Agent** data. It links Process Execution -> Network Connection -> File Write.
+*   **[Read Paper](https://dl.acm.org/doi/10.1145/3320269.3384742)**
+
+#### **C. Dynamic Graph Learning**
+*   **Title:** **"Euler: Detecting Network Lateral Movement via Scalable Graph Neural Networks"**
+*   **Authors:** King et al. (Google Research)
+*   **Core Concept:** Designed for massive scale. It handles dynamic graphs where nodes (computers) join and leave the network constantly.
+*   **Implementation in Blackbox:** Essential if you deploy to large dynamic clouds (AWS/K8s) where IPs change every minute.
+*   **[Read Paper](https://arxiv.org/abs/1909.05284)**
+
+---
+
+### **How to leverage `xInfer` for these?**
+
+All these papers rely on heavy matrix multiplication.
+
+1.  **For LogBERT/NER:** These are Transformers. TensorRT (via `xInfer`) has specific optimizations for **Multi-Head Attention (MHA)**. You can fuse the attention layers to run 50x faster than Python.
+2.  **For GNNs:** This is harder. TensorRT handles the *Dense* part (MLP layers) well, but the *Sparse* part (Adjacency Matrix) is tricky.
+    *   **Strategy:** Perform the "Graph Sampling" and "Aggregation" in optimized C++ (on CPU), then pass the node embeddings to `xInfer` (on GPU) for the classification layers.
+
+**Recommendation:** Start with **LogBERT**. It is the easiest to implement given your current architecture and offers the biggest immediate jump in detection quality.
