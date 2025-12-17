@@ -200,3 +200,10 @@ Instead of writing custom Go code for every database (Oracle, Mongo, Redis), you
 2.  **Sentry Vacuum (Fluent Bit):** For Database/Cloud collection. Configure Fluent Bit to output to your `blackbox-core` TCP port.
 
 This saves you from writing 100 different database connectors yourself. You focus on the **AI Analysis**, not the plumbing.
+
+
+
+---
+
+
+
