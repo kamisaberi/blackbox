@@ -173,3 +173,10 @@ All these papers rely on heavy matrix multiplication.
     *   **Strategy:** Perform the "Graph Sampling" and "Aggregation" in optimized C++ (on CPU), then pass the node embeddings to `xInfer` (on GPU) for the classification layers.
 
 **Recommendation:** Start with **LogBERT**. It is the easiest to implement given your current architecture and offers the biggest immediate jump in detection quality.
+
+
+
+
+# MAMBA and NERF Solution
+
+
