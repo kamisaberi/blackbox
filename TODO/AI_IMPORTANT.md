@@ -78,3 +78,9 @@ If you want to be the best in the world, implement them in this order:
 3.  **Graph Neural Network:** This catches the most sophisticated hackers (APTs).
 
 **Start with LogBERT.** It leverages your `xTorch` and `xInfer` work most directly.
+
+
+# give me the list of pappers about LogBERT , NER , Graph Neural Network about cybersecurity
+
+
+
