@@ -5,20 +5,21 @@ services:
   # 1. The Engine (C++)
   # -------------------------------------------------------
   core:
-    build:
+    build: 
       context: ../../blackbox-core
       dockerfile: docker/Dockerfile
     image: blackbox-core:latest
     container_name: blackbox-core
     restart: always
-    privileged: true # Required for thread pinning & iptables
+    privileged: true
     cap_add:
-      - NET_ADMIN  # For Active Defense (Blocking IPs)
-      - SYS_NICE   # For Real-time Thread Priority
+      - NET_ADMIN
+      - SYS_NICE
     ports:
-      - "514:514/udp" # Syslog UDP
-      - "601:601/tcp" # Syslog TCP
-      - "8081:8081"   # Admin/Metrics
+      - "514:514/udp"
+      - "601:601/tcp"
+      - "2055:2055/udp" # NetFlow
+      - "8081:8081"
     environment:
       - BLACKBOX_UDP_PORT=514
       - BLACKBOX_CLICKHOUSE_URL=http://clickhouse:8123
@@ -27,8 +28,8 @@ services:
       - clickhouse
       - redis
     volumes:
-      - ../../data/models:/app/models # Mount AI models
-      - ../../data/config:/app/config # Mount GeoIP & Rules
+      - ../../data/models:/app/models
+      - ../../data/config:/app/config
     deploy:
       resources:
         reservations:
@@ -63,19 +64,51 @@ services:
     image: blackbox-hud:latest
     container_name: blackbox-hud
     ports:
-      - "3000:80" # Maps Nginx port 80 to host 3000
+      - "3000:80"
     depends_on:
       - tower
 
   # -------------------------------------------------------
-  # 4. The Vault (ClickHouse)
+  # 4. The Relay (Enterprise SOAR) - NEW!
+  # -------------------------------------------------------
+  relay:
+    build: ../../blackbox-relay
+    image: blackbox-relay:latest
+    container_name: blackbox-relay
+    restart: always
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      # Replace this with your real Slack Webhook URL for testing
+      # https://api.slack.com/messaging/webhooks
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL:-""}
+    depends_on:
+      - redis
+
+  # -------------------------------------------------------
+  # 5. The Vacuum (Cloud Aggregator)
+  # -------------------------------------------------------
+  vacuum:
+    build: ../../blackbox-vacuum
+    image: blackbox-vacuum:latest
+    container_name: blackbox-vacuum
+    restart: always
+    environment:
+      - VACUUM_CORE_HOST=core
+      - VACUUM_CORE_PORT=601
+      - VACUUM_WEBHOOK_PORT=9090
+    depends_on:
+      - core
+
+  # -------------------------------------------------------
+  # 6. Infrastructure (DB & Cache)
   # -------------------------------------------------------
   clickhouse:
     image: clickhouse/clickhouse-server:23.8
     container_name: blackbox-db
     ports:
-      - "8123:8123" # HTTP (for C++ Core)
-      - "9000:9000" # Native (for Go API)
+      - "8123:8123"
+      - "9000:9000"
     ulimits:
       nofile:
         soft: 262144
@@ -84,9 +117,6 @@ services:
       - clickhouse_data:/var/lib/clickhouse
       - ./database/clickhouse/schema:/docker-entrypoint-initdb.d
 
-  # -------------------------------------------------------
-  # 5. The Bus (Redis)
-  # -------------------------------------------------------
   redis:
     image: redis:7-alpine
     container_name: blackbox-redis
