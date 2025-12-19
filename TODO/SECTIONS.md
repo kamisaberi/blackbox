@@ -81,3 +81,200 @@ To sell to **Enterprise**, build the remaining modules in this order:
 3.  **`blackbox-commander`:** Essential once you have more than 50 agents.
 4.  **`blackbox-reporter`:** Required for anyone with a compliance audit.
 5.  **`blackbox-architect`:** The "Unicorn" feature for advanced clients.
+
+
+
+---
+
+
+# REMAINING STRUCTURES
+
+
+
+Here is the detailed file structure for the **5 Enterprise Modules** that complete the Blackbox platform.
+
+These modules handle **Automation, Management, Intelligence, and Reporting**.
+
+---
+
+### **1. `blackbox-relay` (The SOAR Engine)**
+**Tech:** Go (Golang)
+**Role:** Listens to Redis for alerts and triggers external actions (Slack, Jira, PagerDuty).
+
+```text
+blackbox/
+└── blackbox-relay/
+    ├── go.mod
+    ├── Dockerfile
+    ├── config/
+    │   └── workflows.yaml         # Logic: "If severity=critical -> PagerDuty"
+    ├── cmd/
+    │   └── relay/
+    │       └── main.go            # Entry point
+    ├── internal/
+    │   ├── config/                # Loads ENV and workflows.yaml
+    │   ├── queue/
+    │   │   └── redis_consumer.go  # Subscribes to 'sentry_alerts' channel
+    │   ├── engine/
+    │   │   └── workflow_engine.go # Matches alerts to configured actions
+    │   └── integrations/
+    │       ├── slack.go           # Slack Webhook client
+    │       ├── jira.go            # Jira API client (Create Issue)
+    │       ├── pagerduty.go       # PagerDuty/OpsGenie client
+    │       ├── email.go           # SMTP client
+    │       └── webhook.go         # Generic JSON POST
+    └── pkg/
+        └── models/
+            └── alert.go           # Struct definition of an Alert
+```
+
+---
+
+### **2. `blackbox-commander` (Fleet Management)**
+**Tech:** Go (Golang) + gRPC
+**Role:** Manages thousands of agents. Handles Heartbeats, Config Pushes, and OTA Updates.
+
+```text
+blackbox/
+└── blackbox-commander/
+    ├── go.mod
+    ├── Dockerfile
+    ├── api/
+    │   └── proto/
+    │       └── v1/
+    │           └── agent.proto    # gRPC definition (Heartbeat, GetConfig)
+    ├── cmd/
+    │   └── commander/
+    │       └── main.go
+    ├── internal/
+    │   ├── grpc/
+    │   │   └── server.go          # Implements agent.proto
+    │   ├── db/
+    │   │   ├── postgres.go        # Agents metadata (Last Seen, Version)
+    │   │   └── migrations/        # SQL schema for agent registry
+    │   ├── ota/
+    │   │   ├── manager.go         # Handles binary versioning
+    │   │   └── s3_storage.go      # Uploads/Downloads binaries from S3
+    │   └── config_gen/
+    │       └── yaml_builder.go    # Dynamically generates agent.yaml
+    └── web/                       # Internal API for the Dashboard to control agents
+        └── api.go
+```
+
+---
+
+### **3. `blackbox-architect` (Self-Healing / GitOps)**
+**Tech:** Go (Golang)
+**Role:** Auto-remediation. Connects to Cloud APIs and Git to fix infrastructure.
+
+```text
+blackbox/
+└── blackbox-architect/
+    ├── go.mod
+    ├── Dockerfile
+    ├── cmd/
+    │   └── architect/
+    │       └── main.go
+    ├── internal/
+    │   ├── listener/
+    │   │   └── alert_listener.go  # Listens for "Fixable" alerts
+    │   ├── mapping/
+    │   │   └── cloud_map.go       # Maps Cloud Resource ID -> Git Repo/File
+    │   ├── providers/
+    │   │   ├── aws.go             # AWS SDK wrapper (Security Groups)
+    │   │   ├── github.go          # GitHub API (Pull Requests)
+    │   │   └── gitlab.go
+    │   ├── patcher/
+    │   │   ├── terraform.go       # HCL Parser/Writer (hclwrite)
+    │   │   ├── ansible.go         # YAML Parser
+    │   │   └── llm_client.go      # Connects to local CodeLlama (optional)
+    └── policies/
+        └── auto_fix.rego          # OPA Policies defining what is allowed to be fixed
+```
+
+---
+
+### **4. `blackbox-intel` (Threat Intelligence)**
+**Tech:** Python (Pandas/Requests)
+**Role:** Aggregates Threat Feeds (IPs, Hashes) and compiles them into efficient Bloom Filters for the C++ Core.
+
+```text
+blackbox/
+└── blackbox-intel/
+    ├── requirements.txt           # pandas, requests, mmh3 (MurmurHash)
+    ├── Dockerfile
+    ├── config/
+    │   └── sources.yaml           # List of feed URLs (AlienVault, AbuseIPDB)
+    ├── src/
+    │   ├── main.py                # Cron job entry point
+    │   ├── fetchers/
+    │   │   ├── http_feed.py       # Generic CSV/Text downloader
+    │   │   ├── taxii_client.py    # STIX/TAXII client
+    │   │   └── virustotal.py      # API client
+    │   ├── processing/
+    │   │   ├── normalizer.py      # Standardizes IP/Domain formats
+    │   │   └── deduplicator.py    # Removes duplicates across feeds
+    │   └── export/
+    │       ├── bloom_filter.py    # Generates .bloom binary for C++
+    │       └── clickhouse.py      # Dumps raw intel to DB for correlation
+    └── data/
+        └── cache/                 # Temporary storage for downloaded feeds
+```
+
+---
+
+### **5. `blackbox-reporter` (Compliance & PDF)**
+**Tech:** Python (Jinja2 + WeasyPrint/ReportLab)
+**Role:** Generates scheduled PDF reports for managers and auditors.
+
+```text
+blackbox/
+└── blackbox-reporter/
+    ├── requirements.txt           # clickhouse-driver, jinja2, weasyprint
+    ├── Dockerfile
+    ├── src/
+    │   ├── main.py                # Scheduler / API Listener
+    │   ├── database/
+    │   │   └── clickhouse.py      # Runs aggregation queries
+    │   ├── rendering/
+    │   │   ├── pdf_engine.py      # Converts HTML -> PDF
+    │   │   └── charts.py          # Generates Matplotlib/Plotly images for PDFs
+    │   └── delivery/
+    │       └── email_sender.py    # Emails PDF to CISO
+    └── templates/                 # HTML/CSS Templates
+        ├── base.html
+        ├── executive_summary.html
+        ├── pci_dss_compliance.html
+        └── hipaa_audit.html
+```
+
+---
+
+### **How to Integrate These into Deployment**
+
+You need to update your **`blackbox-deploy/compose/docker-compose.yml`** to include these new services.
+
+```yaml
+  # ... existing core services ...
+
+  relay:
+    build: ../../blackbox-relay
+    environment:
+      - REDIS_HOST=redis
+      - SLACK_WEBHOOK_URL=${SLACK_URL}
+
+  commander:
+    build: ../../blackbox-commander
+    ports:
+      - "50051:50051" # gRPC Port for Agents
+
+  intel:
+    build: ../../blackbox-intel
+    volumes:
+      - ../../data/config:/app/data/output # Writes bloom filters here
+
+  reporter:
+    build: ../../blackbox-reporter
+    environment:
+      - CLICKHOUSE_HOST=clickhouse
+```
