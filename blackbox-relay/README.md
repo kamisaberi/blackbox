@@ -1,10 +1,3 @@
-Here is the standalone **README.md** for the **`blackbox-relay`** module.
-
-Place this file at **`blackbox/blackbox-relay/README.md`**.
-
-***
-
-```markdown
 # ⚡ Blackbox Relay
 ### Security Orchestration, Automation, and Response (SOAR)
 
@@ -135,4 +128,3 @@ The Core sends alerts to the `sentry_alerts` channel in this format:
 
 **Proprietary & Confidential.**
 Copyright © 2025 Ignition AI. All Rights Reserved.
-```
