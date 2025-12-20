@@ -1,10 +1,3 @@
-Here is the standalone **README.md** for the **`blackbox-sentry-micro`** module.
-
-Place this file at **`blackbox/blackbox-sentry-micro/README.md`**.
-
-***
-
-```markdown
 # 🛡️ Blackbox Sentry Micro
 ### Ultra-Lightweight IoT & Embedded Agent
 
@@ -131,4 +124,3 @@ message Packet {
 
 **Proprietary & Confidential.**
 Copyright © 2025 Ignition AI. All Rights Reserved.
-```
