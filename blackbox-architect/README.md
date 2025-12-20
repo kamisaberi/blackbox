@@ -1,10 +1,3 @@
-Here is the standalone **README.md** for the **`blackbox-architect`** module.
-
-Place this file at **`blackbox/blackbox-architect/README.md`**.
-
-***
-
-```markdown
 # 🏗️ Blackbox Architect
 ### Self-Healing Infrastructure & Automated Remediation
 
@@ -138,4 +131,3 @@ internal/
 
 **Proprietary & Confidential.**
 Copyright © 2025 Ignition AI. All Rights Reserved.
-```
