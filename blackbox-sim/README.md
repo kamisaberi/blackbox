@@ -1,11 +1,3 @@
-Here is the standalone **README.
-md** for the **`blackbox-sim`** module.
-
-Place this file at **`blackbox/blackbox-sim/README.md`**.
-
-***
-
-```markdown
 # 🧠 Blackbox Sim
 ### AI Research, Training, and Artifact Export Lab
 
@@ -120,4 +112,3 @@ The `Sim` includes pre-built architectures for:
 
 **Proprietary & Confidential.**
 Copyright © 2025 Ignition AI. All Rights Reserved.
-```
