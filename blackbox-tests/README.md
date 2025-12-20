@@ -1,10 +1,3 @@
-Here is the standalone **README.md** for the **`blackbox-tests`** module.
-
-Place this file at **`blackbox/blackbox-tests/README.md`**.
-
-***
-
-```markdown
 # 🧪 Blackbox Tests
 ### Unified Quality Assurance & Integration Suite
 
@@ -121,4 +114,3 @@ blackbox-tests/
 
 **Proprietary & Confidential.**
 Copyright © 2025 Ignition AI. All Rights Reserved.
-```
