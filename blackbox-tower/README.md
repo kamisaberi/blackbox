@@ -1,10 +1,3 @@
-Here is the standalone **README.md** for the **`blackbox-tower`** module.
-
-Place this file at **`blackbox/blackbox-tower/README.md`**.
-
-***
-
-```markdown
 # 🗼 Blackbox Tower
 ### API Gateway & Control Plane
 
@@ -138,4 +131,3 @@ blackbox-tower/
 
 **Proprietary & Confidential.**
 Copyright © 2025 Ignition AI. All Rights Reserved.
-```
