@@ -1,10 +1,3 @@
-Here is the standalone **README.md** for the **`blackbox-vacuum`** module.
-
-Place this file at **`blackbox/blackbox-vacuum/README.md`**.
-
-***
-
-```markdown
 # 🌪️ Blackbox Vacuum
 ### Cloud & SaaS Data Aggregator
 
@@ -166,4 +159,3 @@ blackbox-vacuum/
 
 **Proprietary & Confidential.**
 Copyright © 2025 Ignition AI. All Rights Reserved.
-```
