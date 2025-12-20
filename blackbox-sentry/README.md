@@ -1,10 +1,3 @@
-Here is the standalone **README.md** for the **`blackbox-sentry`** module.
-
-Place this file at **`blackbox/blackbox-sentry/README.md`**.
-
-***
-
-```markdown
 # 🛡️ Blackbox Sentry
 ### Enterprise Endpoint Agent (Linux & Windows)
 
@@ -147,4 +140,3 @@ src/
 
 **Proprietary & Confidential.**
 Copyright © 2025 Ignition AI. All Rights Reserved.
-```
