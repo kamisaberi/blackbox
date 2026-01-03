@@ -65,24 +65,26 @@ namespace blackbox::common {
     // Load Logic
     // =========================================================
     void Settings::load_from_env() {
-        std::cout << "[INIT] Loading Configuration..." << std::endl;
+        LOG_INFO("Loading Configuration...");
 
         // Network
-        network_.udp_port = static_cast<uint16_t>(get_env_int("BLACKBOX_UDP_PORT", 514));
-        network_.ring_buffer_size = get_env_int("BLACKBOX_RING_BUFFER_SIZE", 65536);
+        network_.udp_port = std::stoi(get_env("BLACKBOX_UDP_PORT", "514"));
+        network_.admin_port = std::stoi(get_env("BLACKBOX_ADMIN_PORT", "8081"));
 
-        // AI
-        ai_.model_path = get_env_string("BLACKBOX_MODEL_PATH", "/app/models/autoencoder.plan");
-        ai_.anomaly_threshold = get_env_float("BLACKBOX_ANOMALY_THRESHOLD", 0.8f);
-        ai_.batch_size = get_env_int("BLACKBOX_AI_BATCH_SIZE", 32);
+        // AI Configuration (Updated)
+        ai_.model_path = get_env("BLACKBOX_MODEL_PATH", "models/autoencoder.onnx");
+        ai_.anomaly_threshold = std::stof(get_env("BLACKBOX_ANOMALY_THRESHOLD", "0.8"));
+        ai_.batch_size = std::stoi(get_env("BLACKBOX_AI_BATCH_SIZE", "32"));
+        ai_.target_hardware = parse_target(get_env("BLACKBOX_AI_TARGET", "CPU"));
+        ai_.device_id = std::stoi(get_env("BLACKBOX_AI_DEVICE_ID", "0"));
 
-        // Database
-        db_.clickhouse_url = get_env_string("BLACKBOX_CLICKHOUSE_URL", "http://clickhouse:8123");
-        db_.flush_batch_size = get_env_int("BLACKBOX_DB_BATCH_SIZE", 1000);
-        db_.flush_interval_ms = get_env_int("BLACKBOX_DB_FLUSH_MS", 1000);
+        // DB & Enrichment (Standard)
+        db_.clickhouse_url = get_env("BLACKBOX_CLICKHOUSE_URL", "http://localhost:8123");
+        db_.redis_host = get_env("BLACKBOX_REDIS_HOST", "localhost");
+        enrichment_.geoip_db_path = get_env("BLACKBOX_GEOIP_PATH", "config/GeoLite2-City.mmdb");
+        enrichment_.rules_config_path = get_env("BLACKBOX_RULES_PATH", "config/rules.yaml");
 
-        std::cout << "[INIT] Config Loaded. Listening on Port: " << network_.udp_port << std::endl;
-        std::cout << "[INIT] DB Target: " << db_.clickhouse_url << std::endl;
+        LOG_INFO("AI Target: " + xinfer::to_string(ai_.target_hardware));
     }
 
 } // namespace blackbox::common
