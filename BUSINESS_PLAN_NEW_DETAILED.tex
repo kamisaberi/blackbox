@@ -1,0 +1,280 @@
+\documentclass[11pt, a4paper]{article}
+
+% =========================================================
+% PACKAGES
+% =========================================================
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{geometry}
+\usepackage{xcolor}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{graphicx}
+\usepackage{booktabs} % For professional tables
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{helvet} % Modern Sans-Serif font
+\usepackage{setspace}
+
+% =========================================================
+% CONFIGURATION
+% =========================================================
+
+% Set Margins
+\geometry{top=2.5cm, bottom=2.5cm, left=2.5cm, right=2.5cm}
+
+% Set Font to Helvetica (Arial-like)
+\renewcommand{\familydefault}{\sfdefault}
+
+% Spacing
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.8em}
+\onehalfspacing
+
+% Colors
+\definecolor{BrandBlue}{RGB}{0, 51, 102}
+\definecolor{BrandRed}{RGB}{153, 0, 0}
+\definecolor{SectionGrey}{RGB}{60, 60, 60}
+
+% Hyperlinks
+\hypersetup{
+    colorlinks=true,
+    linkcolor=BrandBlue,
+    urlcolor=BrandBlue,
+    pdfborder={0 0 0}
+}
+
+% Headers and Footers
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{\textbf{Ignition AI}}
+\rhead{Master Business Plan v3.0}
+\cfoot{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% Section Styling
+\titleformat{\section}
+{\color{BrandBlue}\Large\bfseries\uppercase}
+{\thesection}{1em}{}
+
+\titleformat{\subsection}
+{\color{SectionGrey}\large\bfseries}
+{\thesubsection}{1em}{}
+
+% Table Styling
+\renewcommand{\arraystretch}{1.4}
+
+% =========================================================
+% DOCUMENT START
+% =========================================================
+\begin{document}
+
+% ---------------------------------------------------------
+% TITLE PAGE
+% ---------------------------------------------------------
+\begin{titlepage}
+    \centering
+    \vspace*{3cm}
+
+    {\Huge \textbf{IGNITION AI} \par}
+    \vspace{0.5cm}
+    {\Large \textit{The Operating System for Edge Intelligence \& Security} \par}
+
+    \vspace{1.5cm}
+    \rule{\linewidth}{0.5mm}
+    \vspace{1.5cm}
+
+    {\Huge \textbf{MASTER BUSINESS PLAN} \par}
+    \vspace{0.5cm}
+    {\Large Version 3.0 (Enterprise \& Hardware Agnostic) \par}
+    \vspace{0.5cm}
+    {\large \today \par}
+
+    \vspace{4cm}
+
+    \textbf{Sector:} Cybersecurity / Edge AI / Deep Tech \\
+    \textbf{Funding Stage:} Pre-Seed / Seed \\
+    \textbf{Product:} Blackbox Platform \\
+
+    \vfill
+
+    \textbf{Contact:} \\
+    Founder \& CEO \\
+    [Email Address] \\
+    [Phone Number] \\
+    ignition-ai.com
+
+    \vspace{1cm}
+    {\footnotesize \textbf{CONFIDENTIAL} \\ This document contains proprietary information.}
+\end{titlepage}
+
+% ---------------------------------------------------------
+% EXECUTIVE SUMMARY
+% ---------------------------------------------------------
+\section{Executive Summary}
+
+\textbf{Ignition AI} is an infrastructure software company building the world’s first hardware-agnostic, real-time AI security platform. Our flagship product, \textbf{Blackbox}, decouples high-performance AI from expensive hardware, allowing enterprises to run military-grade threat detection on existing infrastructure—from multi-million dollar data centers to \$50 industrial gateways.
+
+Current cybersecurity solutions (SIEM/XDR) are trapped in a ``Cloud-Only'' or ``NVIDIA-Only'' paradigm. This forces customers to transport petabytes of sensitive data to the cloud (latency/cost) or purchase specialized hardware (CapEx).
+
+Ignition AI solves this via \textbf{\texttt{xInfer}}, our proprietary inference engine that dynamically recompiles AI models to run on \textit{any} available silicon (Intel CPUs, AMD APUs, Rockchip NPUs, or NVIDIA GPUs) with near-zero overhead. By bringing intelligence to the data, rather than data to the intelligence, we reduce infrastructure costs by 90\% and detection latency from minutes to microseconds.
+
+\textbf{The Ask:} We are raising \textbf{\$1.5M} to finalize the \texttt{xInfer} hardware matrix, launch the Enterprise Edition of Blackbox, and secure our first 10 strategic industrial partnerships.
+
+% ---------------------------------------------------------
+% COMPANY OVERVIEW
+% ---------------------------------------------------------
+\section{Company Overview}
+
+\subsection{Mission}
+To secure the autonomous world by making AI detection ubiquitous, instant, and accessible on any device, anywhere.
+
+\subsection{Vision}
+A future where every router, server, and factory controller has a ``Blackbox'' running inside it—a self-contained, self-healing immune system that requires no cloud connectivity to stop threats.
+
+\subsection{The ``Why Now?''}
+Three macro-trends have converged to create the perfect storm for Ignition AI:
+\begin{enumerate}
+    \item \textbf{The Edge Compute Explosion:} By 2027, 75\% of enterprise data will be created at the edge (Gartner). Current security tools cannot run there.
+    \item \textbf{The Silicon Renaissance:} Every chip manufacturer (Intel, AMD, Apple) is adding ``NPU'' (Neural Processing) cores to consumer chips. Software is lagging behind hardware. Blackbox bridges this gap.
+    \item \textbf{Data Sovereignty:} GDPR and Defense regulations are making it harder to ship logs to the cloud. Local processing is no longer a luxury; it is a legal necessity.
+\end{enumerate}
+
+% ---------------------------------------------------------
+% MARKET ANALYSIS
+% ---------------------------------------------------------
+\section{Market Analysis}
+
+\subsection{Total Addressable Market (TAM)}
+\begin{itemize}
+    \item \textbf{Next-Gen SIEM \& XDR (\$22B):} Enterprises drowning in Splunk bills ($>$ \$1M/year) need a way to filter noise at the source.
+    \item \textbf{Industrial IoT Security (\$38B):} Factories run on legacy hardware that cannot support heavy Python/Java agents. Our C++ agent is the solution.
+    \item \textbf{Edge AI Infrastructure (\$59B):} We license the \texttt{xInfer} runtime as a standalone engine to non-security companies (e.g., Drones, Retail).
+\end{itemize}
+
+\subsection{Competitive Landscape}
+\begin{table}[h]
+    \centering
+    \begin{tabular}{@{}p{3cm} p{3cm} p{3cm} p{3cm}@{}}
+        \toprule
+        \textbf{Competitor} & \textbf{Architecture} & \textbf{Latency} & \textbf{Hardware Req} \\
+        \midrule
+        \textbf{Splunk} & Java / Batch & Minutes & Heavy Servers \\
+        \textbf{CrowdStrike} & Cloud-Native & Seconds & Cloud Only \\
+        \textbf{Darktrace} & Appliance & Milliseconds & Proprietary HW \\
+        \textbf{Blackbox} & \textbf{Edge C++} & \textbf{$<$1ms} & \textbf{Any Silicon} \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+% ---------------------------------------------------------
+% PRODUCT & TECHNOLOGY
+% ---------------------------------------------------------
+\section{Product \& Technology}
+
+Our platform consists of the \textbf{Blackbox Ecosystem}, powered by the \textbf{xInfer Core}.
+
+\subsection{The Core Differentiator: xInfer}
+A C++20 Hardware Abstraction Layer (HAL) that unifies AI execution. Instead of writing code for one chip, our engine dynamically adapts to the available hardware at runtime.
+
+\begin{itemize}
+    \item \textbf{NVIDIA (TensorRT):} Uses massive parallelism for Data Centers (100k+ EPS).
+    \item \textbf{Intel / AMD (OpenVINO):} Leverages AVX-512 and iGPUs on standard servers.
+    \item \textbf{Rockchip / NXP (NPU):} Utilizes dedicated accelerators on Industrial Gateways.
+\end{itemize}
+
+\subsection{The Blackbox Suite}
+\begin{enumerate}
+    \item \textbf{Blackbox Core:} The engine. Processes 100k+ EPS on commodity CPUs via Zero-Copy ingestion.
+    \item \textbf{Sentry Micro:} IoT Agent written in C99. Runs on routers/PLCs using $<50$MB RAM.
+    \item \textbf{Tower:} Centralized fleet control plane for managing 100,000+ nodes.
+    \item \textbf{Matrix:} Built-in ``Cyber Range'' simulator to stress-test defenses.
+    \item \textbf{Sim:} R\&D lab that trains models and exports them to universal ONNX artifacts.
+\end{enumerate}
+
+% ---------------------------------------------------------
+% BUSINESS MODEL
+% ---------------------------------------------------------
+\section{Business Model}
+
+We utilize an \textbf{Open Core} model to drive adoption, with Enterprise Features driving revenue.
+
+\subsection{Revenue Streams}
+\begin{itemize}
+    \item \textbf{Enterprise Licensing (Recurring):} Per-node subscription.
+    \begin{itemize}
+        \item Server Node: \$10/month.
+        \item IoT Node: \$0.50/month (Volume based).
+    \end{itemize}
+    \item \textbf{OEM Partnerships (Royalty):} Hardware manufacturers (Cisco, Siemens) pre-install \texttt{sentry-micro} on their devices. We take a royalty fee per device sold.
+    \item \textbf{``The Foundry'' (Professional Services):} We train bespoke AI models for industrial clients with unique machinery vibration patterns.
+\end{itemize}
+
+% ---------------------------------------------------------
+% GTM STRATEGY
+% ---------------------------------------------------------
+\section{Go-to-Market Strategy}
+
+\begin{itemize}
+    \item \textbf{Phase 1: Developer Love (Months 1-6):} Publish benchmarks comparing Blackbox vs. Logstash. Release ``The Matrix'' simulator as open-source. Goal: 5,000 GitHub Stars.
+    \item \textbf{Phase 2: The ``Trojan Horse'' (Months 6-12):} Target DevOps engineers. Offer a free ``Log Reducer'' utility to lower their Splunk bills by 50\%.
+    \item \textbf{Phase 3: Strategic OEM (Year 2):} Approach chipset vendors (Intel, AMD). Show them that Blackbox makes their chips look powerful. Leverage their sales channels.
+\end{itemize}
+
+% ---------------------------------------------------------
+% ROADMAP
+% ---------------------------------------------------------
+\section{Operational Roadmap}
+
+\begin{table}[h]
+    \centering
+    \begin{tabular}{@{}p{2.5cm} p{11cm}@{}}
+        \toprule
+        \textbf{Timeline} & \textbf{Key Deliverables} \\
+        \midrule
+        \textbf{Q1 2026} & \textbf{Product Hardening:} Complete Unit Tests. Finish Vacuum connectors (AWS/Azure). Release v0.5 Alpha. \\
+        \textbf{Q2 2026} & \textbf{Hardware Matrix:} Certify \texttt{xInfer} on Intel NPU, Rockchip RK3588, and NVIDIA Jetson. \\
+        \textbf{Q3 2026} & \textbf{Cloud Launch:} Launch managed SaaS version of Tower. \\
+        \textbf{Q4 2026} & \textbf{Enterprise v1.0:} Full release with SOC2 Compliance, RBAC, and PDF Reporting. \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+% ---------------------------------------------------------
+% FINANCIALS
+% ---------------------------------------------------------
+\section{Financial Projections}
+
+\begin{table}[h]
+    \centering
+    \begin{tabular}{@{}l c c c c@{}}
+        \toprule
+        \textbf{Metric} & \textbf{Year 1} & \textbf{Year 2} & \textbf{Year 3} & \textbf{Year 4} \\
+        \midrule
+        \textbf{Deployments} & 1,000 & 100,000 & 1M & 5M \\
+        \textbf{ACV} & \$25k & \$40k & \$55k & \$70k \\
+        \textbf{ARR} & \textbf{\$250k} & \textbf{\$2M} & \textbf{\$11M} & \textbf{\$42M} \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\subsection{Use of Funds (\$1.5M Pre-Seed)}
+\begin{itemize}
+    \item \textbf{45\% Engineering:} Hiring 2 Core C++ Engineers, 1 AI Researcher.
+    \item \textbf{20\% Hardware Lab:} Purchasing Jetsons, FPGAs, and Industrial PLCs for testing.
+    \item \textbf{20\% GTM \& Sales:} Developer Relations and Content Marketing.
+    \item \textbf{15\% Operations:} Legal and Cloud Costs.
+\end{itemize}
+
+% ---------------------------------------------------------
+% CONCLUSION
+% ---------------------------------------------------------
+\section{Conclusion}
+
+Legacy SIEMs ask: \textit{``How much data can you send to our cloud?''} \\
+\textbf{Blackbox} asks: \textit{``How much intelligence can we push to your device?''}
+
+By breaking the hardware barrier with \texttt{xInfer}, Ignition AI is not just competing in the SIEM market; we are creating the \textbf{Ubiquitous AI Defense} category. We are building the engine that will secure the autonomous future.
+
+\end{document}
