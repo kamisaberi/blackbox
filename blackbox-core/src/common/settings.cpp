@@ -50,7 +50,10 @@ namespace blackbox::common {
         return default_val;
     }
 
-
+    static std::string get_env(const char* key, const std::string& def) {
+        const char* val = std::getenv(key);
+        return val ? std::string(val) : def;
+    }
     // Helper to map string to xInfer Target
     static xinfer::Target parse_target(const std::string& s) {
         if (s == "NVIDIA_TRT") return xinfer::Target::NVIDIA_TRT;
