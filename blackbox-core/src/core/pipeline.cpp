@@ -42,7 +42,9 @@ namespace blackbox::core {
         // 3. Setup Logic Engines
         try {
             // A. AI Brain (xInfer)
-            brain_ = std::make_unique<analysis::InferenceEngine>(settings.ai().model_path);
+//            brain_ = std::make_unique<analysis::InferenceEngine>(settings.ai().model_path);
+            brain_ = std::make_unique<analysis::InferenceEngine>(settings.ai());
+
             
             // B. Rule Engine (Signatures)
             rule_engine_ = std::make_unique<analysis::RuleEngine>();
