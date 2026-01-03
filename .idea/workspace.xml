@@ -9,9 +9,7 @@
     <option name="/Default/RiderDebugger/RiderRestoreDecompile/RestoreDecompileSetting/@EntryValue" value="false" type="bool" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="bc4ae08c-4123-4a04-9b53-987fe4d0009d" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-    </list>
+    <list default="true" id="bc4ae08c-4123-4a04-9b53-987fe4d0009d" name="Changes" comment="" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -72,6 +70,7 @@
       <updated>1767391492856</updated>
       <workItem from="1767391493940" duration="5398000" />
       <workItem from="1767409562289" duration="2288000" />
+      <workItem from="1767450496972" duration="700000" />
     </task>
     <servers />
   </component>

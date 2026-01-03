@@ -50,6 +50,17 @@ namespace blackbox::common {
         return default_val;
     }
 
+
+    // Helper to map string to xInfer Target
+    static xinfer::Target parse_target(const std::string& s) {
+        if (s == "NVIDIA_TRT") return xinfer::Target::NVIDIA_TRT;
+        if (s == "INTEL_OV") return xinfer::Target::INTEL_OV;
+        if (s == "ROCKCHIP_RKNN") return xinfer::Target::ROCKCHIP_RKNN;
+        if (s == "AMD_VITIS") return xinfer::Target::AMD_VITIS;
+        return xinfer::Target::CPU; // Default
+    }
+
+
     // =========================================================
     // Load Logic
     // =========================================================
