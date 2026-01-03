@@ -1,9 +1,3 @@
-This is a comprehensive, multi-page equivalent **Master Business Plan**. It expands significantly on previous versions, adding depth to the Market Analysis, Operational Strategy, and Financial Modeling.
-
-This document is structured to serve as the **primary due diligence document** for Series A investors or strategic partners.
-
-***
-
 # IGNITION AI: MASTER BUSINESS PLAN
 **"The Operating System for Edge Intelligence & Security"**
 
