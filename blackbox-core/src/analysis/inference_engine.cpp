@@ -1,90 +1,45 @@
-/**
- * @file inference_engine.cpp
- * @brief Implementation of the GPU Bridge.
- */
-
 #include "blackbox/analysis/inference_engine.h"
-#include <iostream>
+#include "blackbox/common/logger.h"
 #include <stdexcept>
-#include <cstring> // memcpy
-
-// Assuming your proprietary library headers look like this:
-#include "xinfer/engine.h"
-#include "xinfer/context.h"
-#include <cuda_runtime.h> // Standard CUDA API
 
 namespace blackbox::analysis {
 
-    // =========================================================
-    // Constructor
-    // =========================================================
-    InferenceEngine::InferenceEngine(const std::string& model_path) 
-        : d_input_(nullptr), d_output_(nullptr) 
-    {
-        std::cout << "[CORE] Loading AI Model from: " << model_path << "..." << std::endl;
+    InferenceEngine::InferenceEngine(const common::AIConfig& config) {
+        LOG_INFO("Initializing xInfer Engine...");
 
-        // 1. Load the xInfer Engine (Wrapper around nvinfer1::ICudaEngine)
+        // 1. Prepare Configuration
+        xinfer::zoo::cybersecurity::NetworkDetectorConfig net_config;
+        net_config.model_path = config.model_path;
+        net_config.target = config.target_hardware;
+        net_config.device_id = config.device_id;
+
+        // 2. Load Model via Factory
         try {
-            engine_ = xInfer::load_engine(model_path);
+            detector_ = std::make_unique<xinfer::zoo::cybersecurity::NetworkDetector>(net_config);
+            LOG_INFO("Model Loaded Successfully via xInfer.");
         } catch (const std::exception& e) {
-            std::cerr << "[ERR] Failed to load model: " << e.what() << std::endl;
+            LOG_CRITICAL("Failed to load AI model: " + std::string(e.what()));
             throw;
         }
-
-        // 2. Create Execution Context
-        context_ = engine_->create_execution_context();
-
-        // 3. Allocate GPU Memory
-        // Assuming 128 floats input, 1 float output
-        input_size_bytes_ = 128 * sizeof(float);
-        output_size_bytes_ = 1 * sizeof(float);
-
-        cudaError_t err;
-        
-        err = cudaMalloc(&d_input_, input_size_bytes_);
-        if (err != cudaSuccess) throw std::runtime_error("CUDA Malloc Input Failed");
-
-        err = cudaMalloc(&d_output_, output_size_bytes_);
-        if (err != cudaSuccess) throw std::runtime_error("CUDA Malloc Output Failed");
-
-        std::cout << "[CORE] Model Loaded Successfully. GPU Ready." << std::endl;
     }
 
-    // =========================================================
-    // Destructor
-    // =========================================================
-    InferenceEngine::~InferenceEngine() {
-        // Free GPU memory
-        if (d_input_) cudaFree(d_input_);
-        if (d_output_) cudaFree(d_output_);
-    }
-
-    // =========================================================
-    // Evaluate (The Hot Path)
-    // =========================================================
     float InferenceEngine::evaluate(const std::array<float, 128>& input_vector) {
-        
-        // 1. Host -> Device Copy (CPU to GPU)
-        // In a batched system, we would copy 32 vectors at once here.
-        cudaMemcpy(d_input_, input_vector.data(), input_size_bytes_, cudaMemcpyHostToDevice);
+        // 1. Wrap input in a Tensor (Zero-Copy wrapper)
+        // We create a tensor of shape [1, 128]
+        // const_cast is safe here because xInfer respects read-only if configured
+        xinfer::core::Tensor input_tensor(
+            {1, 128},
+            xinfer::core::DataType::FP32,
+            const_cast<float*>(input_vector.data())
+        );
 
-        // 2. Run Inference
-        // Use your xInfer library's execute wrapper
-        // Usually takes an array of bindings [input_ptr, output_ptr]
-        std::vector<void*> bindings = { d_input_, d_output_ };
-        
-        bool success = context_->execute(bindings);
-        if (!success) {
-            std::cerr << "[ERR] xInfer execution failed!" << std::endl;
-            return 0.0f; // Fail safe (assume benign to prevent blocking traffic on error)
-        }
+        // 2. Run Analysis
+        // xInfer handles hardware offload, DMA, and async execution internally
+        auto result = detector_->analyze(input_tensor);
 
-        // 3. Device -> Host Copy (GPU to CPU)
-        float anomaly_score = 0.0f;
-        cudaMemcpy(&anomaly_score, d_output_, output_size_bytes_, cudaMemcpyDeviceToHost);
-
-        // 4. Return Score
-        return anomaly_score;
+        // 3. Return Score
+        // Result is a struct containing {is_attack, anomaly_score, attack_type}
+        return result.anomaly_score;
     }
 
-} // namespace blackbox::analysis
+}
