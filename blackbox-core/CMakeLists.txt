@@ -26,16 +26,31 @@ endif()
 
 # A. Boost (Networking)
 find_package(Boost REQUIRED COMPONENTS system)
-
 # B. Threads (POSIX)
 find_package(Threads REQUIRED)
-
 # C. CUDA / TensorRT (AI)
 find_package(CUDAToolkit REQUIRED)
+find_package(CURL REQUIRED)
+find_library(HIREDIS_LIB hiredis REQUIRED)
+find_library(MAXMINDDB_LIB maxminddb REQUIRED)
+# --- NEW: xInfer Integration ---
+# Replaces CUDAToolkit and nvinfer
+find_package(xinfer REQUIRED)
+# -----------------------------
+
+
+
+
 # Note: TensorRT usually requires manual path setup or a custom FindTensorRT.cmake
 # We assume standard install or Docker container paths here.
 include_directories(/usr/include/x86_64-linux-gnu)
 link_directories(/usr/lib/x86_64-linux-gnu)
+
+
+# 3. Include Directories
+include_directories(include)
+include_directories(${Boost_INCLUDE_DIRS})
+
 
 # D. cURL (ClickHouse HTTP)
 find_package(CURL REQUIRED)
@@ -124,6 +139,14 @@ target_link_libraries(flight-recorder PRIVATE
     ${HIREDIS_LIB}
     ${MAXMINDDB_LIB}
     # ${EXECINFO_LIB} # Uncomment for Alpine Linux
+        Boost::system
+        Threads::Threads
+        ${CURL_LIBRARIES}
+        ${HIREDIS_LIB}
+        ${MAXMINDDB_LIB}
+        # --- NEW: Link xInfer Core & Zoo ---
+        xinfer::core
+        xinfer::zoo
 )
 
 message(STATUS "Build Configured. Ready to compile Blackbox Core.")
