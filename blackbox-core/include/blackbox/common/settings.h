@@ -18,11 +18,19 @@ namespace blackbox::common {
     };
 
     struct AIConfig {
-        std::string model_path = "models/autoencoder.plan";
-        std::string vocab_path = "config/vocab.txt";
-        std::string scaler_path = "config/scaler_params.txt";
+
+        std::string model_path = "models/ids_model.rknn";
+
+        //std::string vocab_path = "config/vocab.txt";
+        //std::string scaler_path = "config/scaler_params.txt";
+        //std::string model_path = "models/autoencoder.plan";
         float anomaly_threshold = 0.8f;
         int batch_size = 32;
+
+
+        // NEW: Hardware Target (CPU, NVIDIA_TRT, ROCKCHIP_RKNN, etc.)
+        xinfer::Target target_hardware = xinfer::Target::CPU;
+        int device_id = 0;
     };
 
     struct EnrichmentConfig {
