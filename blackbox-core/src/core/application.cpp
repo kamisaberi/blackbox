@@ -1,8 +1,3 @@
-/**
- * @file application.cpp
- * @brief Implementation of the Bootstrap Sequence.
- */
-
 #include "blackbox/core/application.h"
 #include "blackbox/common/settings.h"
 #include "blackbox/common/logger.h"
@@ -20,10 +15,8 @@ namespace blackbox::core {
     Application::Application(int argc, char** argv) {
         // 1. Initialize Safety Nets first
         common::CrashHandler::install();
-
         // 2. Initialize Subsystems
         init_subsystems();
-
         // 3. Load Configuration
         // (In the future, parse argc/argv for config file path)
         common::Settings::instance().load_from_env();
