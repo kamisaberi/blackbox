@@ -150,11 +150,21 @@ netflow_server_ = std::make_unique<ingest::NetflowServer>(
         common::ThreadUtils::pin_current_thread_to_core(0);
         common::ThreadUtils::set_realtime_priority(90);
 
+
+
+
+
         try {
             io_context_->run();
         } catch (const std::exception& e) {
             LOG_CRITICAL("Ingestion Thread Crashed: " + std::string(e.what()));
         }
+
+
+
+
+
+
     }
 
     // =========================================================
