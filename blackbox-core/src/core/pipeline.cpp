@@ -1,8 +1,3 @@
-/**
- * @file pipeline.cpp
- * @brief Implementation of the Orchestrator.
- */
-
 #include "blackbox/core/pipeline.h"
 #include "blackbox/common/settings.h"
 #include "blackbox/common/logger.h"
@@ -17,16 +12,9 @@
 
 namespace blackbox::core {
 
-
-
-
     // =========================================================
     // Constructor
     // =========================================================
-
-
-
-
     Pipeline::Pipeline() {
         LOG_INFO("Initializing Blackbox Pipeline components...");
 
