@@ -39,27 +39,13 @@ namespace blackbox::core {
             // A. AI Brain (xInfer)
 //            brain_ = std::make_unique<analysis::InferenceEngine>(settings.ai().model_path);
             brain_ = std::make_unique<analysis::InferenceEngine>(settings.ai());
-
-
-
-
-
-            
             // B. Rule Engine (Signatures)
             rule_engine_ = std::make_unique<analysis::RuleEngine>();
             rule_engine_->load_rules(settings.enrichment().rules_config_path);
-
-
-
-
-
-
             // C. GeoIP Service (Enrichment)
             geoip_ = std::make_unique<enrichment::GeoIPService>(settings.enrichment().geoip_db_path);
-
             // D. Admin Server (Prometheus/Health)
             admin_server_ = std::make_unique<AdminServer>(settings.network().admin_port);
-
             // E. Redis Client (Real-time Alerts)
             redis_ = std::make_unique<storage::RedisClient>(
                 settings.db().redis_host,
