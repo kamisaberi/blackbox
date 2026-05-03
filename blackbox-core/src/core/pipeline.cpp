@@ -17,9 +17,16 @@
 
 namespace blackbox::core {
 
+
+
+
     // =========================================================
     // Constructor
     // =========================================================
+
+
+
+
     Pipeline::Pipeline() {
         LOG_INFO("Initializing Blackbox Pipeline components...");
 
@@ -45,10 +52,19 @@ namespace blackbox::core {
 //            brain_ = std::make_unique<analysis::InferenceEngine>(settings.ai().model_path);
             brain_ = std::make_unique<analysis::InferenceEngine>(settings.ai());
 
+
+
+
+
             
             // B. Rule Engine (Signatures)
             rule_engine_ = std::make_unique<analysis::RuleEngine>();
             rule_engine_->load_rules(settings.enrichment().rules_config_path);
+
+
+
+
+
 
             // C. GeoIP Service (Enrichment)
             geoip_ = std::make_unique<enrichment::GeoIPService>(settings.enrichment().geoip_db_path);
