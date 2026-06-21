@@ -264,3 +264,4 @@ The **Priority Score (1-10)** is based on two factors:
 ### How to use this table for your Blackbox SIEM:
 1. Start by building the **Real-Time UEBA** and **DGA DNS Filtering** directly inside your central SIEM box.
 2. Then, build the **eBPF Syscall Detector** and **Encrypted Traffic Fingerprinting** as lightweight "sensors." Deploy these sensors onto your clients' servers, and have them stream their AI-scored anomalies back to your central SIEM.
+

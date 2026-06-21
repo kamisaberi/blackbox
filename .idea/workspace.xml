@@ -9,7 +9,9 @@
     <option name="/Default/RiderDebugger/RiderRestoreDecompile/RestoreDecompileSetting/@EntryValue" value="false" type="bool" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="bc4ae08c-4123-4a04-9b53-987fe4d0009d" name="Changes" comment="" />
+    <list default="true" id="bc4ae08c-4123-4a04-9b53-987fe4d0009d" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/IMPORTANT.MD" beforeDir="false" afterPath="$PROJECT_DIR$/IMPORTANT.MD" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -74,7 +76,7 @@
       <workItem from="1777849052984" duration="273000" />
       <workItem from="1777936341893" duration="12000" />
       <workItem from="1782041801226" duration="1497000" />
-      <workItem from="1782081169299" duration="787000" />
+      <workItem from="1782081169299" duration="1543000" />
     </task>
     <servers />
   </component>
