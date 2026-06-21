@@ -171,4 +171,5 @@ If you are building a Blackbox SIEM with `xinfer` and `xtorch`, **focus entirely
 Build your architecture so it ingests raw bytes (Network traffic, Syslog, DNS, Windows Event Logs) and runs them through zero-latency `xinfer` models in-memory. If you achieve that, you will have a SIEM that processes data at speeds large enterprise companies dream of.
 
 
+# can you create bigger list of any type of cyber security application that i can create based on xtorch and xinfer
 
