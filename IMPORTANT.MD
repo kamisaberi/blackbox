@@ -220,3 +220,4 @@ Think of your Blackbox SIEM as the **"Brain"**, and these C++ applications as th
 
 If you build the core SIEM in C++, you can later take the exact same `xtorch/xinfer` code and compile it into lightweight agents (the Network AI, the Endpoint AI, the eBPF AI) and deploy them across a client's network. All of these high-speed edge sensors will natively communicate back to your core Blackbox SIEM, creating an unstoppable, lightning-fast security ecosystem.
 
+# create a tables with brief and priority score for them
