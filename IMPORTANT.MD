@@ -106,5 +106,6 @@ If you are building this, here are the massive hurdles you need to think about r
 It is a brilliant, highly commercializable project. Most legacy SIEMs (like Splunk or QRadar) bolted AI on as an afterthought. If you build a SIEM from the ground up in C++ where the core log-ingestion pipeline is natively fused with `xtorch` and `xinfer`, you will have a product that is drastically faster and lighter than the competition.
 
 
-# are you thinking while i have xtorch and xinfer as c++ AI libraries i work on my own blackbox SIEM AI project in future
+# before that you gave me a list of applications that can and should use AI . give me the list with priority that which one of them can be briliant if i  reate it on the xinfer and xtorch
+
 
