@@ -65,3 +65,6 @@ These applications solve very specific, complex technical problems in cybersecur
 
 ### 6. Cloud Security & Identity
 *   **CIEM (Cloud Infrastructure Entitlement Management):** In AWS, Azure, or GCP, human users and machines have thousands of complex permissions. Deep Learning models map out millions of permission combinations to identify "toxic combinations" (e.g., a service account that has dormant permissions allowing it to accidentally delete a production database). The AI automatically recommends the exact JSON code to enforce "least privilege" access.
+
+
+# are you thinking while i have xtorch and xinfer as c++ AI libraries i work on my own blackbox SIEM AI project in future
