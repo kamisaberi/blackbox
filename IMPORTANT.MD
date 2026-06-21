@@ -32,3 +32,7 @@ Here is a comprehensive list of cybersecurity applications and domains that acti
 
 ### 6. Data Protection
 *   **Data Loss Prevention (DLP):** AI and NLP are used to automatically scan outbound network traffic, emails, and cloud storage to identify sensitive data (like source code, PII, or financial records). Deep learning optical character recognition (OCR) can even detect sensitive text hidden inside screenshots or images.
+
+
+
+# i need  more specific related application list . give me moreb
