@@ -169,3 +169,6 @@ If I were to prioritize the previous list based on **what would be absolutely br
 If you are building a Blackbox SIEM with `xinfer` and `xtorch`, **focus entirely on Tier 1 and Tier 2.**
 
 Build your architecture so it ingests raw bytes (Network traffic, Syslog, DNS, Windows Event Logs) and runs them through zero-latency `xinfer` models in-memory. If you achieve that, you will have a SIEM that processes data at speeds large enterprise companies dream of.
+
+
+
