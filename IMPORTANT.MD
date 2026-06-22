@@ -265,3 +265,4 @@ The **Priority Score (1-10)** is based on two factors:
 1. Start by building the **Real-Time UEBA** and **DGA DNS Filtering** directly inside your central SIEM box.
 2. Then, build the **eBPF Syscall Detector** and **Encrypted Traffic Fingerprinting** as lightweight "sensors." Deploy these sensors onto your clients' servers, and have them stream their AI-scored anomalies back to your central SIEM.
 
+# based on that you know i created xtorch and xinfer . give me a milestone about projects that i can start from start to the end
